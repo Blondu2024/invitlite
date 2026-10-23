@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Invitație</title>
+<meta property="og:title" content="Ai primit o invitație">
+<meta property="og:description" content="Deschide-o ca să vezi detaliile și să confirmi prezența.">
+<style>
+  body{margin:0;background:#F5F0E6;color:#2A2420;font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100svh}
+  .msg{text-align:center;padding:24px;max-width:46ch;line-height:1.6}
+  .msg a{color:#7A2E2E}
+</style>
+</head>
+<body>
+<div class="msg" id="fallback">
+  <noscript>Invitația trăiește în link și are nevoie de JavaScript ca să se deschidă.</noscript>
+</div>
+<script type="module" src="/src/viewer/main.ts"></script>
+</body>
+</html>
