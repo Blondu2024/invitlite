@@ -126,3 +126,47 @@ describe('wire', () => {
     expect((doc.querySelector('[data-gcal]') as HTMLAnchorElement).href).toContain('calendar.google.com');
   });
 });
+
+describe('motifs and photo', () => {
+  it('each event has its own drawing, in every style', () => {
+    const want: Record<string, string> = { nunta: 'm-rings', botez: 'm-dove', cununie: 'm-bouquet', aniversare: 'm-cake' };
+    const small: Record<string, string> = { nunta: 'm-flower', botez: 'm-candle', cununie: 'm-rings-s', aniversare: 'm-balloons' };
+    for (const t of TEMPLATE_IDS) {
+      for (const k of Object.keys(want)) {
+        const html = renderBody({ ...SAMPLE, template: t, kind: k as Invitation['kind'] }, o);
+        expect(html, `${t}/${k}`).toContain(want[k]);
+        expect(html, `${t}/${k}`).toContain(small[k]);
+      }
+    }
+  });
+
+  it('the envelope carries the motif too', () => {
+    expect(renderBody({ ...SAMPLE, kind: 'botez' }, o)).toMatch(/env-motif m-dove/);
+  });
+
+  it('renders the photo in every style, without leaking the referrer', () => {
+    const inv = { ...SAMPLE, photo: 'https://i.postimg.cc/abc/poza.jpg' };
+    for (const t of TEMPLATE_IDS) {
+      const html = renderBody({ ...inv, template: t }, o);
+      expect(html).toContain('src="https://i.postimg.cc/abc/poza.jpg"');
+      expect(html).toContain('referrerpolicy="no-referrer"');
+      expect(html).toContain('data-photo-box');
+    }
+  });
+
+  it('no photo, no frame', () => {
+    for (const t of TEMPLATE_IDS) {
+      expect(renderBody({ ...SAMPLE, template: t }, o)).not.toContain('data-photo');
+    }
+  });
+
+  it('a photo that fails to load disappears and takes its frame with it', () => {
+    const inv = { ...SAMPLE, template: 'botanic' as const, photo: 'https://example.invalid/x.jpg' };
+    const doc = mount(inv);
+    wire(doc, inv, { link: 'L', go: () => {} });
+    doc.querySelector('img[data-photo]')?.dispatchEvent(new Event('error'));
+    expect(doc.querySelector('[data-photo-box]')).toBeNull();
+    expect(doc.querySelector('.has-photo')).toBeNull();
+    expect(doc.querySelector('.motif')).not.toBeNull();
+  });
+});

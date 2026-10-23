@@ -3,6 +3,7 @@ import { starter } from '../inv/defaults';
 import { KIND_LABEL } from '../inv/format';
 import { THEMES } from '../inv/theme';
 import { waNumber } from '../inv/rsvp';
+import { photoLinkHint, safePhotoUrl } from '../inv/sanitize';
 import { EVENT_KINDS, LIMITS, TEMPLATE_IDS, type Invitation, type Moment } from '../inv/types';
 import { initialInvitation, persist } from './store';
 import { Preview } from './Preview';
@@ -94,6 +95,47 @@ function MomentRow(props: {
         hint="Dacă îl lași gol, facem noi linkul din adresă."
       />
     </li>
+  );
+}
+
+function PhotoField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [state, setState] = useState<'idle' | 'ok' | 'bad'>('idle');
+  const url = safePhotoUrl(value);
+  const hint = photoLinkHint(value);
+  useEffect(() => setState('idle'), [url]);
+  return (
+    <div className="f photo-f">
+      <label className="f">
+        <span className="f-l">Poza voastră (opțional, link)</span>
+        <input type="url" inputMode="url" value={value} maxLength={LIMITS.photo} placeholder="https://i.postimg.cc/..." onChange={(e) => onChange(e.target.value)} />
+      </label>
+      {hint && <span className="f-h f-warn">{hint}</span>}
+      {url && (
+        <div className="photo-prev">
+          <img
+            src={url}
+            alt=""
+            referrerPolicy="no-referrer"
+            onLoad={() => setState('ok')}
+            onError={() => setState('bad')}
+            style={state === 'bad' ? { display: 'none' } : undefined}
+          />
+          {state === 'ok' && <span className="f-h">Poza se vede. Așa o vor vedea și invitații.</span>}
+          {state === 'bad' && (
+            <span className="f-h f-warn">Poza nu se încarcă de la acest link. Invitația va arăta fără poză până pui un link bun.</span>
+          )}
+        </div>
+      )}
+      <details className="howto">
+        <summary>Cum iau linkul unei poze?</summary>
+        <ol>
+          <li>Intră pe postimages.org (gratuit, fără cont) și apasă „Choose images".</li>
+          <li>Alege poza din telefon. După ce se urcă, copiază „Direct link" (începe cu https://i.postimg.cc/).</li>
+          <li>Lipește-l aici.</li>
+        </ol>
+        <p>Poza nu intră în link, doar adresa ei. Așa linkul rămâne scurt și codul QR mic. Dacă ștergi poza de pe postimages, invitația rămâne, doar fără poză.</p>
+      </details>
+    </div>
   );
 }
 
@@ -211,6 +253,7 @@ export function Editor() {
               </label>
               <Text label="Orașul" value={inv.city} max={LIMITS.city} onChange={set('city')} placeholder="Galați" />
             </div>
+            <PhotoField value={inv.photo} onChange={set('photo')} />
           </div>
 
           <div className="grp">

@@ -186,3 +186,29 @@ describe('starters', () => {
     expect(s.kind).toBe('botez');
   });
 });
+
+import { photoLinkHint, safePhotoUrl } from '../src/inv/sanitize';
+
+describe('photo links', () => {
+  it('only https survives normalization', () => {
+    expect(normalizeInvitation({ photo: 'javascript:alert(1)' }).photo).toBe('');
+    expect(normalizeInvitation({ photo: 'http://x.ro/a.jpg' }).photo).toBe('');
+    expect(normalizeInvitation({ photo: 'https://x.ro/a.jpg" onerror="x' }).photo).toBe('');
+    expect(safePhotoUrl(' https://i.postimg.cc/a/b.jpg ')).toBe('https://i.postimg.cc/a/b.jpg');
+  });
+
+  it('explains page links that are not images', () => {
+    expect(photoLinkHint('https://www.facebook.com/photo/?fbid=1')).toContain('Facebook');
+    expect(photoLinkHint('https://photos.app.goo.gl/abc')).toContain('Google Photos');
+    expect(photoLinkHint('https://imgur.com/abc')).toContain('i.imgur.com');
+    expect(photoLinkHint('https://postimg.cc/abc')).toContain('Direct link');
+    expect(photoLinkHint('https://scontent.fotp3-1.fna.fbcdn.net/v/x.jpg')).toContain('expiră');
+    expect(photoLinkHint('https://i.postimg.cc/abc/x.jpg')).toBe('');
+    expect(photoLinkHint('')).toBe('');
+  });
+
+  it('the photo address rides in the link and round-trips', () => {
+    const inv = { ...SAMPLE, photo: 'https://i.postimg.cc/abc/poza.jpg' };
+    expect(openHash(invitationHash(inv))?.inv.photo).toBe(inv.photo);
+  });
+});

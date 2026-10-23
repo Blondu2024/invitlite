@@ -31,6 +31,39 @@ export function telHref(phone: string): string {
   return digits.length >= 3 ? 'tel:' + digits : '';
 }
 
+/** Photos: https only (an http image on an https page is blocked anyway). */
+export function safePhotoUrl(url: string): string {
+  const t = url.trim();
+  return /^https:\/\/[^\s"'<>]+$/i.test(t) ? t : '';
+}
+
+/**
+ * Links people paste that are a web page about a photo, not the photo itself.
+ * Returns a hint for the editor, or '' when the link looks like a real image.
+ */
+export function photoLinkHint(url: string): string {
+  const t = url.trim();
+  if (!t) return '';
+  if (!/^https:\/\//i.test(t)) return 'Linkul trebuie să înceapă cu https://';
+  let host = '';
+  try {
+    host = new URL(t).hostname.toLowerCase();
+  } catch {
+    return 'Linkul nu pare complet.';
+  }
+  if (/(^|\.)(facebook\.com|fb\.com|instagram\.com)$/.test(host))
+    return 'Acesta e linkul paginii de Facebook, nu al pozei. Deschide poza, ține apăsat pe ea și alege „Copiază adresa imaginii". Atenție: linkurile pozelor de Facebook expiră după câteva săptămâni.';
+  if (/(^|\.)fbcdn\.net$/.test(host))
+    return 'Merge, dar linkurile pozelor de Facebook expiră după câteva săptămâni. Pentru o invitație trimisă cu mult înainte, urcă poza pe postimages.org.';
+  if (host === 'photos.google.com' || host === 'photos.app.goo.gl')
+    return 'Acesta e linkul albumului Google Photos, nu al pozei. Deschide poza, ține apăsat pe ea și alege „Copiază adresa imaginii".';
+  if (host === 'imgur.com' || host === 'www.imgur.com')
+    return 'Acesta e linkul paginii Imgur. Ține apăsat pe poză și alege „Copiază adresa imaginii" (începe cu i.imgur.com).';
+  if (host === 'postimg.cc' || host === 'www.postimg.cc')
+    return 'Acesta e linkul paginii. Pe postimages alege „Direct link" (începe cu i.postimg.cc).';
+  return '';
+}
+
 export function safeColor(c: string, fallback: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(c.trim()) ? c.trim() : fallback;
 }

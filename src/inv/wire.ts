@@ -22,6 +22,17 @@ export function wire(doc: Document, inv: Invitation, o: WireOpts): void {
   };
   doc.querySelector('[data-open]')?.addEventListener('click', open);
 
+  // A photo lives on someone else's server and can vanish. Without it the
+  // invitation must look as if there never was one.
+  doc.querySelectorAll<HTMLImageElement>('img[data-photo]').forEach((img) => {
+    const drop = () => {
+      img.closest('.has-photo')?.classList.remove('has-photo');
+      img.closest('[data-photo-box]')?.remove();
+    };
+    if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) drop();
+    else img.addEventListener('error', drop, { once: true });
+  });
+
   const items = Array.from(doc.querySelectorAll<HTMLElement>('main > .rv, main .sec .rv, main .sec.rv'));
   const IO = win && 'IntersectionObserver' in win ? win.IntersectionObserver : null;
   if (IO) {

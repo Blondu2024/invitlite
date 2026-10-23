@@ -2,6 +2,7 @@ import { daysUntil, dottedDate, initials, KIND_LABEL, longDate, roCount, shortDa
 import { escHtml, safeHref } from './sanitize';
 import { fontFaces, THEMES, type Theme } from './theme';
 import { waNumber } from './rsvp';
+import { mainMotif, smallMotif } from './motifs';
 import type { Invitation, Moment } from './types';
 
 export interface RenderOpts {
@@ -35,10 +36,6 @@ const PIN =
 const CAL =
   '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
 
-/** Sprig for the botanic direction: one stroke, drawn in on open. */
-const SPRIG =
-  '<svg class="sprig" viewBox="0 0 120 220" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path class="draw" d="M60 215C60 160 58 110 62 8"/><path class="draw" d="M61 170c-14-6-26-20-28-38 16 4 26 18 28 38zM61 130c14-6 26-20 28-38-16 4-26 18-28 38zM60 92c-12-5-22-17-24-32 14 3 22 15 24 32zM61 58c10-5 18-15 19-28-12 3-18 13-19 28z"/></svg>';
-
 function countdownText(iso: string, today: Date): string {
   const n = daysUntil(iso, today);
   if (n === null) return '';
@@ -60,6 +57,11 @@ function hero(inv: Invitation, t: Theme, o: RenderOpts): string {
   const count = countdownText(inv.date, o.today);
   const countEl = `<p class="h-count rv" style="--i:6" data-count>${escHtml(count)}</p>`;
 
+  const motif = mainMotif(inv.kind, 'motif rv');
+  const img = inv.photo
+    ? `<img src="${escHtml(inv.photo)}" alt="" referrerpolicy="no-referrer" decoding="async" data-photo>`
+    : '';
+
   if (t.id === 'seara') {
     const amp = escHtml(inv.hosts)
       .split(/\s*&amp;\s*/)
@@ -68,12 +70,14 @@ function hero(inv: Invitation, t: Theme, o: RenderOpts): string {
     const nums = inv.date
       ? escHtml(dottedDate(inv.date)).split('.').map((x) => `<span>${x}</span>`).join('<i>·</i>')
       : '';
-    return `<header class="hero">
+    return `<header class="hero${img ? ' has-photo' : ''}">
+${img ? `<div class="h-bg" data-photo-box>${img}</div>` : ''}
+<div class="h-in">${motif.replace('class="motif rv', 'style="--i:0" class="motif rv')}
 ${guest}<p class="h-kind rv" style="--i:1">${label}</p>
 <h1 class="h-names rv" style="--i:2">${inv.hosts ? amp : hosts}</h1>
 ${intro}
 ${nums ? `<p class="h-nums rv" style="--i:3" aria-label="${date}">${nums}</p>` : ''}
-<p class="h-date rv" style="--i:4">${date}</p>${city}${countEl}
+<p class="h-date rv" style="--i:4">${date}</p>${city}${countEl}</div>
 </header>`;
   }
 
@@ -82,13 +86,13 @@ ${nums ? `<p class="h-nums rv" style="--i:3" aria-label="${date}">${nums}</p>` :
 <div class="h-text">${guest}<p class="h-kind rv" style="--i:1">${label}</p>
 <h1 class="h-names rv" style="--i:2">${hosts}</h1>${intro}
 <p class="h-date rv" style="--i:4">${date}</p>${city}${countEl}</div>
-${SPRIG}
+<div class="h-side${img ? ' has-photo' : ''}">${img ? `<figure class="h-photo rv" style="--i:2" data-photo-box>${img}</figure>` : ''}${motif}</div>
 </header>`;
   }
 
-  const mono = initials(inv.hosts);
   return `<header class="hero">
-${mono ? `<div class="h-mono rv" style="--i:0" aria-hidden="true">${escHtml(mono)}</div>` : ''}
+${motif.replace('class="motif rv', 'style="--i:0" class="motif rv')}
+${img ? `<figure class="h-photo arch rv" style="--i:1" data-photo-box>${img}</figure>` : ''}
 ${guest}${intro}<p class="h-kind rv" style="--i:2">${label}</p>
 <h1 class="h-names rv" style="--i:3">${hosts}</h1>
 <div class="h-rule rv" style="--i:4" aria-hidden="true"></div>
@@ -151,14 +155,16 @@ function envelope(inv: Invitation, o: RenderOpts): string {
   const to = o.guest ? `Pentru ${escHtml(o.guest)}` : 'O invitație pentru tine';
   return `<div class="env" data-env>
 <div class="env-flap" aria-hidden="true"></div>
-<div class="env-body"><p class="env-to">${to}</p>
+<div class="env-body">${mainMotif(inv.kind, 'env-motif')}<p class="env-to">${to}</p>
 <button class="env-seal" type="button" data-open aria-label="Deschide invitația"><span>${escHtml(initials(inv.hosts) || '&')}</span></button>
 <p class="env-hint">Atinge sigiliul ca să deschizi</p></div></div>`;
 }
 
 export function renderBody(inv: Invitation, o: RenderOpts): string {
   const t = THEMES[inv.template] ?? THEMES.clasic;
-  const message = inv.message ? `<section class="sec deep msg rv">${prose(inv.message, 'msg-p')}</section>` : '';
+  const message = inv.message
+    ? `<section class="sec deep msg rv">${smallMotif(inv.kind)}${prose(inv.message, 'msg-p')}</section>`
+    : `<div class="orn-solo rv">${smallMotif(inv.kind)}</div>`;
   const note = inv.note ? `<section class="sec note rv"><h2 class="lbl">De știut</h2>${prose(inv.note)}</section>` : '';
   const cal = inv.date
     ? `<section class="sec cal rv"><p class="lbl">Ca să nu uitați</p><div class="cal-btns">
@@ -200,29 +206,56 @@ a{color:inherit}
 .h-count{margin:34px 0 0;font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
 .h-count:empty{display:none}
 
+/* motifs: hand-drawn line art, drawn in once the invitation opens */
+.motif{display:block;color:var(--accent);width:clamp(96px,22vw,150px);height:auto;margin:0 auto 30px}
+.orn{display:block;color:currentColor;width:84px;height:auto;margin:0 auto 26px;opacity:.85}
+.orn-solo{padding:calc(var(--pad)*.5) 0 0;color:var(--accent)}
+.draw{stroke-dasharray:1;stroke-dashoffset:1}
+.is-open .hero .draw,.in .draw,.env .draw{animation:draw 2.6s .9s cubic-bezier(.6,0,.2,1) forwards}
+.env .draw{animation-delay:.2s}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+/* photo (hosted elsewhere; removed cleanly if it fails to load) */
+.h-photo{margin:0 0 34px;overflow:hidden;background:var(--line)}
+.h-photo img,.h-bg img{display:block;width:100%;height:100%;object-fit:cover}
+
 /* clasic */
 .t-clasic .h-names{font-style:italic;font-weight:500}
-.t-clasic .h-mono{font-family:var(--display);font-size:1.6rem;letter-spacing:.12em;width:84px;height:84px;border:1px solid var(--accent);color:var(--accent);border-radius:50%;display:grid;place-items:center;margin:0 0 34px;outline:1px solid var(--line);outline-offset:5px}
 .t-clasic .h-rule{width:min(240px,50vw);height:7px;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);margin:30px auto 0}
+.t-clasic .arch{width:min(260px,62vw);aspect-ratio:3/4;border-radius:999px 999px 6px 6px;outline:1px solid var(--accent);outline-offset:7px}
 
 /* botanic */
 .t-botanic .hero{flex-direction:row;justify-content:space-between;text-align:left;gap:4vw;max-width:1180px;margin:0 auto}
-.t-botanic .h-text{max-width:820px}
+.t-botanic .h-text{max-width:820px;min-width:0}
 .t-botanic .h-names{font-size:clamp(3.6rem,14vw,10rem)}
 .t-botanic .h-intro{margin-left:0}
-.t-botanic .sprig{flex:0 0 auto;width:clamp(70px,14vw,150px);color:var(--accent)}
-.t-botanic .sprig .draw{stroke-dasharray:600;stroke-dashoffset:600}
-.is-open .t-botanic .sprig .draw{animation:draw 2.4s .5s cubic-bezier(.6,0,.2,1) forwards}
-@keyframes draw{to{stroke-dashoffset:0}}
-@media (max-width:640px){.t-botanic .hero{flex-direction:column-reverse;align-items:flex-start;justify-content:center;gap:28px}.t-botanic .sprig{width:56px;margin-bottom:8px}}
+.t-botanic .h-side{flex:0 0 auto;position:relative;width:clamp(120px,22vw,240px)}
+.t-botanic .h-side .motif{width:100%;margin:0}
+.t-botanic .h-side.has-photo{width:clamp(220px,32vw,400px)}
+.t-botanic .h-side.has-photo .h-photo{margin:0;aspect-ratio:4/5;border-radius:4px}
+.t-botanic .h-side.has-photo .motif{position:absolute;width:44%;left:-14%;bottom:-8%;background:var(--paper);border-radius:50%;padding:10%;box-sizing:content-box}
+@media (max-width:640px){
+  .t-botanic .hero{flex-direction:column-reverse;align-items:flex-start;justify-content:center;gap:34px}
+  .t-botanic .h-side{width:110px}
+  .t-botanic .h-side.has-photo{width:100%}
+  .t-botanic .h-side.has-photo .h-photo{aspect-ratio:4/3}
+  .t-botanic .h-side.has-photo .motif{width:96px;left:auto;right:12px;bottom:-30px;padding:12px}
+}
 
 /* seara */
+.t-seara .hero{padding:0}
+.t-seara .h-in{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:var(--pad) var(--gut)}
+.t-seara .h-bg{position:absolute;inset:0;z-index:0}
+.t-seara .h-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,20,27,.55),rgba(18,20,27,.82) 55%,var(--paper))}
+.t-seara .has-photo .h-kind,.t-seara .has-photo .h-amp,.t-seara .has-photo .h-nums i{color:var(--accent)}
+.t-seara .has-photo .h-date,.t-seara .has-photo .h-city,.t-seara .has-photo .h-intro,.t-seara .has-photo .h-count{color:#D8CFBB}
 .t-seara .h-names{display:flex;flex-direction:column;align-items:center;font-weight:400}
 .t-seara .h-amp{font-style:italic;color:var(--accent);font-size:.6em;line-height:1.1}
 .t-seara .h-nums{font-family:var(--display);font-size:clamp(2.6rem,10vw,6rem);line-height:1;margin:38px 0 0;display:flex;gap:.25em;align-items:baseline;font-variant-numeric:lining-nums}
 .t-seara .h-nums i{font-style:normal;color:var(--accent)}
 .t-seara .h-date{color:var(--muted);margin-top:14px}
 .t-seara .h-intro{margin:30px auto 0}
+.t-seara .motif{width:clamp(80px,16vw,120px)}
 
 /* message */
 .msg{text-align:center}
@@ -281,6 +314,7 @@ a{color:inherit}
 .env{position:fixed;inset:0;z-index:10;background:var(--deep);color:var(--on-deep);display:grid;place-items:center;perspective:1400px;transition:transform 1s .55s cubic-bezier(.7,0,.2,1)}
 .env-flap{position:absolute;left:0;right:0;top:0;height:52%;background:var(--deep);filter:brightness(.88);clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:top;transition:transform .8s cubic-bezier(.6,0,.2,1)}
 .env-body{position:relative;text-align:center;padding:0 24px}
+.env-motif{display:block;width:110px;height:auto;margin:0 auto 26px;color:var(--on-deep);opacity:.9}
 .env-to{font-family:var(--display);font-size:clamp(1.6rem,6vw,2.6rem);margin:0 0 36px;font-style:italic}
 .env-seal{width:96px;height:96px;border-radius:50%;border:0;cursor:pointer;background:var(--on-deep);color:var(--deep);font-family:var(--display);font-size:1.7rem;letter-spacing:.06em;box-shadow:0 0 0 6px color-mix(in srgb,var(--on-deep) 30%,transparent);animation:pulse 2.4s ease-in-out infinite}
 .env-seal:focus-visible{outline:2px solid var(--on-deep);outline-offset:8px}
@@ -300,7 +334,7 @@ a{color:inherit}
   .env,.env-flap{transition:opacity .3s}
   .is-open .env{transform:none;opacity:0;pointer-events:none}
   .env-seal{animation:none}
-  .t-botanic .sprig .draw{stroke-dashoffset:0;animation:none}
+  .draw{stroke-dashoffset:0;animation:none}
 }
 @media print{.env,.rs-form,.cal,.badge{display:none}.rv{opacity:1;transform:none}.hero{min-height:auto}}`;
 }

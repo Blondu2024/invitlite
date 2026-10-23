@@ -81,6 +81,15 @@ button{font:inherit;color:inherit}
 .demo-msg-t{margin:0 0 6px;font-weight:500}
 .demo-msg pre{margin:0 0 4px;white-space:pre-wrap;font-family:var(--sans);font-size:.9rem}
 
+/* photo */
+.f-warn{color:var(--accent)}
+.photo-prev{display:grid;gap:6px}
+.photo-prev img{max-width:180px;max-height:180px;border-radius:6px;object-fit:cover;border:1px solid var(--line)}
+.howto{font-size:.88rem;color:var(--muted)}
+.howto summary{cursor:pointer;color:var(--ink);text-decoration:underline;text-underline-offset:3px;padding:4px 0}
+.howto ol{margin:8px 0;padding-left:1.2em}
+.howto p{margin:0}
+
 /* send */
 .warn{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:20px;padding:12px 14px;border-radius:6px;background:#F6E3D9;border:1px solid #E2BFAE}
 .warn p{margin:0}

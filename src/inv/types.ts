@@ -25,6 +25,8 @@ export interface Invitation {
   /** YYYY-MM-DD. */
   date: string;
   city: string;
+  /** https link to a photo hosted elsewhere. Only the address rides in the link. */
+  photo: string;
   intro: string;
   message: string;
   parents: string;
@@ -51,6 +53,7 @@ export const LIMITS = {
   place: 80,
   address: 160,
   mapUrl: 600,
+  photo: 600,
   moments: 6,
   phone: 24,
   guest: 80,

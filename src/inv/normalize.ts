@@ -1,3 +1,4 @@
+import { safePhotoUrl } from './sanitize';
 import { EVENT_KINDS, LIMITS, TEMPLATE_IDS, type Invitation, type Moment } from './types';
 
 /**
@@ -55,6 +56,7 @@ export function normalizeInvitation(raw: unknown): Invitation {
     hosts: str(o.hosts, LIMITS.hosts),
     date: isoDate(o.date),
     city: str(o.city, LIMITS.city),
+    photo: safePhotoUrl(str(o.photo, LIMITS.photo)),
     intro: str(o.intro, LIMITS.intro),
     message: str(o.message, LIMITS.message),
     parents: str(o.parents, LIMITS.parents),
