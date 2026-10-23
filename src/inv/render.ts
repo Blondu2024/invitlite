@@ -214,7 +214,7 @@ a{color:inherit}
 .t-botanic .sprig .draw{stroke-dasharray:600;stroke-dashoffset:600}
 .is-open .t-botanic .sprig .draw{animation:draw 2.4s .5s cubic-bezier(.6,0,.2,1) forwards}
 @keyframes draw{to{stroke-dashoffset:0}}
-@media (max-width:640px){.t-botanic .hero{flex-direction:column-reverse;align-items:flex-start}.t-botanic .sprig{width:56px;margin-bottom:8px}}
+@media (max-width:640px){.t-botanic .hero{flex-direction:column-reverse;align-items:flex-start;justify-content:center;gap:28px}.t-botanic .sprig{width:56px;margin-bottom:8px}}
 
 /* seara */
 .t-seara .h-names{display:flex;flex-direction:column;align-items:center;font-weight:400}
@@ -222,6 +222,7 @@ a{color:inherit}
 .t-seara .h-nums{font-family:var(--display);font-size:clamp(2.6rem,10vw,6rem);line-height:1;margin:38px 0 0;display:flex;gap:.25em;align-items:baseline;font-variant-numeric:lining-nums}
 .t-seara .h-nums i{font-style:normal;color:var(--accent)}
 .t-seara .h-date{color:var(--muted);margin-top:14px}
+.t-seara .h-intro{margin:30px auto 0}
 
 /* message */
 .msg{text-align:center}

@@ -21,6 +21,7 @@ function show(): void {
   const { inv, guest } = opened;
   const o = { base: location.origin, guest, envelope: true, today: new Date() };
   document.title = documentTitle(inv);
+  document.getElementById('fallback-css')?.remove();
   const style = document.createElement('style');
   style.textContent = renderCss(inv, o);
   document.head.appendChild(style);
