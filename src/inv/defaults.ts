@@ -39,6 +39,13 @@ export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 
     askKids: false,
     askMenu: false,
   },
+  film: {
+    intro: 'Stingem lumina, facem popcorn și ne strângem pe canapea. Locul tău e păstrat.',
+    message: '',
+    moments: [m('Începe filmul', '20:00')],
+    askKids: false,
+    askMenu: false,
+  },
 };
 
 export function starter(kind: EventKind, prev?: Invitation): Invitation {
@@ -61,6 +68,8 @@ export function starter(kind: EventKind, prev?: Invitation): Invitation {
     askKids: s.askKids,
     askMenu: s.askMenu,
     note: prev?.note ?? '',
+    title: prev?.title ?? '',
+    snacks: prev?.snacks ?? '',
   };
 }
 
@@ -86,4 +95,26 @@ export const SAMPLE: Invitation = {
   askKids: true,
   askMenu: true,
   note: 'Ținuta: elegantă. Copiii sunt bineveniți, avem și un colț de joacă pentru ei.',
+  title: '',
+  snacks: '',
+};
+
+/** The film-night example. Fictional people, an invented title. */
+export const SAMPLE_FILM: Invitation = {
+  ...SAMPLE,
+  kind: 'film',
+  template: 'seara',
+  hosts: 'Ioana și Radu',
+  date: '2027-01-15',
+  intro: STARTERS.film.intro,
+  message: '',
+  parents: '',
+  godparents: '',
+  moments: [m('Începe filmul', '20:00', 'Sufrageria noastră', 'Strada Brăilei 12, Galați')],
+  rsvpBy: '',
+  askKids: false,
+  askMenu: false,
+  note: 'Aduceți-vă papucii. Pături avem.',
+  title: 'Maraton de comedii vechi',
+  snacks: 'Popcorn cu unt, pizza făcută în casă și limonadă.',
 };

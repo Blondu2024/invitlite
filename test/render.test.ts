@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderBody, renderCss, renderDocument, mapHref } from '../src/inv/render';
 import { wire } from '../src/inv/wire';
-import { SAMPLE } from '../src/inv/defaults';
+import { SAMPLE, SAMPLE_FILM } from '../src/inv/defaults';
 import { TEMPLATE_IDS, type Invitation } from '../src/inv/types';
 
 const o = { base: 'https://invitlite.app', guest: '', envelope: true, today: new Date(2027, 0, 1) };
@@ -127,10 +127,140 @@ describe('wire', () => {
   });
 });
 
+// jsdom has no canvas; the petals must bow out quietly instead of failing.
+HTMLCanvasElement.prototype.getContext = (() => null) as never;
+
+/** The real jsdom document: it has a window, so timers and matchMedia apply. */
+function live(inv: Invitation): Document {
+  document.documentElement.className = 'is-sealed';
+  document.body.innerHTML = renderBody(inv, o);
+  return document;
+}
+
+describe('entrance scenes', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    delete (window as { matchMedia?: unknown }).matchMedia;
+  });
+
+  it('the wedding plays a scene after the envelope, the other kinds do not', () => {
+    const html = renderBody(SAMPLE, o);
+    expect(html).toContain('st-wed');
+    expect(html).toContain('st-couple');
+    expect(html).toContain('data-petals');
+    expect(html).toContain('data-skip');
+    for (const k of ['botez', 'cununie', 'aniversare'] as const) {
+      expect(renderBody({ ...SAMPLE, kind: k }, o)).not.toContain('data-stage');
+    }
+  });
+
+  it('the editor preview never plays a scene', () => {
+    const html = renderBody(SAMPLE, { ...o, envelope: false });
+    expect(html).not.toContain('data-stage');
+    expect(html).not.toContain('data-env');
+  });
+
+  it('opening plays the scene, then shows the page and clears the stage', () => {
+    vi.useFakeTimers();
+    const doc = live(SAMPLE);
+    wire(doc, SAMPLE, { link: 'L', go: () => {} });
+    const root = doc.documentElement;
+    (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+    expect(root.classList.contains('is-playing')).toBe(true);
+    expect(root.classList.contains('is-shown')).toBe(false);
+    vi.advanceTimersByTime(7800);
+    expect(root.classList.contains('is-shown')).toBe(true);
+    expect(root.classList.contains('is-playing')).toBe(false);
+    vi.advanceTimersByTime(1000);
+    expect(doc.querySelector('[data-stage]')).toBeNull();
+    expect(doc.querySelector('canvas[data-petals]')).toBeNull();
+  });
+
+  it('"sari peste" shows the page at once', () => {
+    vi.useFakeTimers();
+    const doc = live(SAMPLE);
+    wire(doc, SAMPLE, { link: 'L', go: () => {} });
+    (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+    expect(doc.documentElement.classList.contains('is-shown')).toBe(false);
+    (doc.querySelector('[data-skip]') as HTMLButtonElement).click();
+    expect(doc.documentElement.classList.contains('is-shown')).toBe(true);
+    vi.advanceTimersByTime(2000);
+    expect(doc.querySelector('canvas[data-petals]')).toBeNull();
+  });
+
+  it('reduced motion skips the scene entirely', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (q: string) => ({ matches: q.includes('reduce') }),
+    });
+    const doc = live(SAMPLE);
+    wire(doc, SAMPLE, { link: 'L', go: () => {} });
+    (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+    expect(doc.documentElement.classList.contains('is-shown')).toBe(true);
+    expect(doc.querySelector('[data-stage]')).toBeNull();
+  });
+
+  it('the film countdown is shorter than the wedding', () => {
+    vi.useFakeTimers();
+    const doc = live(SAMPLE_FILM);
+    wire(doc, SAMPLE_FILM, { link: 'L', go: () => {} });
+    (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+    vi.advanceTimersByTime(3900);
+    expect(doc.documentElement.classList.contains('is-shown')).toBe(true);
+  });
+});
+
+describe('film night', () => {
+  it('opens on a curtain and a countdown, not an envelope', () => {
+    const html = renderBody(SAMPLE_FILM, o);
+    expect(html).toContain('class="cur"');
+    expect(html).toContain('Intră în sală');
+    expect(html).toContain('st-film');
+    expect(html).not.toContain('class="env"');
+  });
+
+  it('the invitation is a ticket with the guest, the title and a seat', () => {
+    const html = renderBody(SAMPLE_FILM, { ...o, guest: 'Familia Popescu' });
+    expect(html).toContain('class="tk ');
+    expect(html).toContain('Maraton de comedii vechi');
+    expect(html).toContain('Familia Popescu');
+    expect(html).toMatch(/Rândul [A-L], locul \d+/);
+    expect(html).toContain('Sufrageria noastră');
+    expect(html).toContain('Popcorn cu unt');
+    expect(html).toContain('Programul serii');
+  });
+
+  it('the same guest always gets the same seat', () => {
+    const a = renderBody(SAMPLE_FILM, { ...o, guest: 'Ion' }).match(/Rândul [A-L], locul \d+/)?.[0];
+    const b = renderBody(SAMPLE_FILM, { ...o, guest: 'ion ' }).match(/Rândul [A-L], locul \d+/)?.[0];
+    expect(a).toBe(b);
+    expect(renderBody(SAMPLE_FILM, o)).toContain('Unde vrei tu');
+  });
+
+  it('escapes the new fields', () => {
+    const evil = '<img src=x onerror=alert(1)>';
+    for (const t of TEMPLATE_IDS) {
+      const html = renderBody({ ...SAMPLE_FILM, template: t, title: evil, snacks: evil }, { ...o, guest: evil });
+      expect(html).not.toContain('<img');
+    }
+  });
+
+  it('works in every style and opens like the others', () => {
+    for (const t of TEMPLATE_IDS) {
+      const inv = { ...SAMPLE_FILM, template: t };
+      const doc = mount(inv);
+      wire(doc, inv, { link: 'L', go: () => {} });
+      (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+      expect(doc.documentElement.classList.contains('is-open')).toBe(true);
+      expect(doc.querySelector('.tk-title')?.textContent).toBe('Maraton de comedii vechi');
+    }
+  });
+});
+
 describe('motifs and photo', () => {
   it('each event has its own drawing, in every style', () => {
-    const want: Record<string, string> = { nunta: 'm-rings', botez: 'm-dove', cununie: 'm-bouquet', aniversare: 'm-cake' };
-    const small: Record<string, string> = { nunta: 'm-flower', botez: 'm-candle', cununie: 'm-rings-s', aniversare: 'm-balloons' };
+    const want: Record<string, string> = { nunta: 'm-rings', botez: 'm-dove', cununie: 'm-bouquet', aniversare: 'm-cake', film: 'm-reel' };
+    const small: Record<string, string> = { nunta: 'm-flower', botez: 'm-candle', cununie: 'm-rings-s', aniversare: 'm-balloons', film: 'm-popcorn' };
     for (const t of TEMPLATE_IDS) {
       for (const k of Object.keys(want)) {
         const html = renderBody({ ...SAMPLE, template: t, kind: k as Invitation['kind'] }, o);

@@ -1,8 +1,9 @@
-import { daysUntil, dottedDate, initials, KIND_LABEL, longDate, roCount, shortDate } from './format';
+import { daysUntil, dottedDate, hashName, initials, KIND_LABEL, longDate, roCount, seatFor, shortDate } from './format';
 import { escHtml, safeHref } from './sanitize';
 import { fontFaces, THEMES, type Theme } from './theme';
 import { waNumber } from './rsvp';
 import { mainMotif, smallMotif } from './motifs';
+import { curtain, sceneCss, stage } from './scenes';
 import type { Invitation, Moment } from './types';
 
 export interface RenderOpts {
@@ -36,16 +37,59 @@ const PIN =
 const CAL =
   '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
 
-function countdownText(iso: string, today: Date): string {
-  const n = daysUntil(iso, today);
+function countdownText(inv: Invitation, today: Date): string {
+  const n = daysUntil(inv.date, today);
   if (n === null) return '';
+  const film = inv.kind === 'film';
   if (n > 1) return `Mai sunt ${roCount(n, 'zi', 'zile')}`;
-  if (n === 1) return 'Mâine e ziua cea mare';
-  if (n === 0) return 'Astăzi e ziua cea mare';
+  if (n === 1) return film ? 'Ne vedem mâine seară' : 'Mâine e ziua cea mare';
+  if (n === 0) return film ? 'Ne vedem diseară' : 'Astăzi e ziua cea mare';
   return '';
 }
 
+/** A barcode for the ticket stub, its bars taken from the guest's name. */
+function barcode(seed: number): string {
+  let x = seed || 1;
+  let at = 0;
+  const bars: string[] = [];
+  while (at < 96) {
+    x = (Math.imul(x, 1103515245) + 12345) >>> 0;
+    const w = 1 + ((x >>> 16) % 3);
+    if ((x >>> 20) % 3) bars.push(`<rect x="${at}" width="${w}" height="24"/>`);
+    at += w + 1 + ((x >>> 24) % 2);
+  }
+  return `<svg class="tk-bar" viewBox="0 0 96 24" preserveAspectRatio="none" aria-hidden="true" fill="currentColor">${bars.join('')}</svg>`;
+}
+
+/** Film night: the invitation is a cinema ticket with the guest's name and seat. */
+function ticketHero(inv: Invitation, o: RenderOpts): string {
+  const first = inv.moments[0];
+  const seat = seatFor(o.guest);
+  const room = first?.place || inv.city || 'La noi acasă';
+  const where = seat.row ? `Rândul ${seat.row}, locul ${seat.seat}` : 'Unde vrei tu';
+  const cell = (k: string, v: string) => (v ? `<div><dt>${k}</dt><dd>${escHtml(v)}</dd></div>` : '');
+  const guest = o.guest ? `<p class="h-guest rv" style="--i:0">Dragă ${escHtml(o.guest)},</p>` : '';
+  const intro = inv.intro ? `<p class="h-intro rv" style="--i:2">${escHtml(inv.intro)}</p>` : '';
+  const img = inv.photo
+    ? `<figure class="h-photo film-ph rv" style="--i:3" data-photo-box><img src="${escHtml(inv.photo)}" alt="" referrerpolicy="no-referrer" decoding="async" data-photo></figure>`
+    : '';
+  const count = countdownText(inv, o.today);
+  return `<header class="hero hero-tk">${guest}
+<div class="tk rv" style="--i:1">
+<div class="tk-main"><p class="tk-kind">${escHtml(KIND_LABEL.film)} · Bilet de intrare</p>
+<h1 class="tk-title">${escHtml(inv.title || 'Seara de film')}</h1>
+${inv.hosts ? `<p class="tk-by">la ${escHtml(inv.hosts)}</p>` : ''}
+<dl class="tk-grid">${cell('Data', inv.date ? `${dottedDate(inv.date)}` : '')}${cell('Ora', first?.time ?? '')}${cell('Sala', room)}${cell('Locul', where)}</dl></div>
+<div class="tk-stub"><p class="tk-admit">Admite</p><p class="tk-name">${escHtml(o.guest || 'Un invitat drag')}</p>
+${mainMotif('film', 'tk-reel')}${barcode(hashName(o.guest || inv.hosts))}<p class="tk-no">Nr. ${seat.no}</p></div>
+</div>${intro}${img}
+<p class="h-date rv" style="--i:4">${escHtml(longDate(inv.date))}</p>
+<p class="h-count rv" style="--i:5" data-count>${escHtml(count)}</p>
+</header>`;
+}
+
 function hero(inv: Invitation, t: Theme, o: RenderOpts): string {
+  if (inv.kind === 'film') return ticketHero(inv, o);
   const label = escHtml(KIND_LABEL[inv.kind]);
   const hosts = escHtml(inv.hosts || 'Numele vostru');
   const date = escHtml(longDate(inv.date));
@@ -54,7 +98,7 @@ function hero(inv: Invitation, t: Theme, o: RenderOpts): string {
   const guest = o.guest
     ? `<p class="h-guest rv" style="--i:0">Dragă ${escHtml(o.guest)},</p>`
     : '';
-  const count = countdownText(inv.date, o.today);
+  const count = countdownText(inv, o.today);
   const countEl = `<p class="h-count rv" style="--i:6" data-count>${escHtml(count)}</p>`;
 
   const motif = mainMotif(inv.kind, 'motif rv');
@@ -122,7 +166,8 @@ ${m.time ? `<span class="mo-time">${escHtml(m.time)}</span>` : '<span class="mo-
 </li>`;
     })
     .join('');
-  return `<section class="sec prog"><h2 class="sec-title rv">Programul zilei</h2><ol class="mos">${rows}</ol></section>`;
+  const title = inv.kind === 'film' ? 'Programul serii' : 'Programul zilei';
+  return `<section class="sec prog"><h2 class="sec-title rv">${title}</h2><ol class="mos">${rows}</ol></section>`;
 }
 
 function rsvp(inv: Invitation, o: RenderOpts): string {
@@ -150,8 +195,13 @@ ${inv.askMenu ? `<label class="rs-f"><span>Meniu vegetarian</span><select name="
 </form></section>`;
 }
 
-function envelope(inv: Invitation, o: RenderOpts): string {
+function envelope(inv: Invitation, t: Theme, o: RenderOpts): string {
   if (!o.envelope) return '';
+  if (inv.kind === 'film') return curtain(o.guest) + stage(inv, t);
+  return envelopeOnly(inv, o) + stage(inv, t);
+}
+
+function envelopeOnly(inv: Invitation, o: RenderOpts): string {
   const to = o.guest ? `Pentru ${escHtml(o.guest)}` : 'O invitație pentru tine';
   return `<div class="env" data-env>
 <div class="env-flap" aria-hidden="true"></div>
@@ -166,13 +216,17 @@ export function renderBody(inv: Invitation, o: RenderOpts): string {
     ? `<section class="sec deep msg rv">${smallMotif(inv.kind)}${prose(inv.message, 'msg-p')}</section>`
     : `<div class="orn-solo rv">${smallMotif(inv.kind)}</div>`;
   const note = inv.note ? `<section class="sec note rv"><h2 class="lbl">De știut</h2>${prose(inv.note)}</section>` : '';
+  const snacks =
+    inv.kind === 'film' && inv.snacks
+      ? `<section class="sec snacks rv"><h2 class="lbl">La bufet</h2>${prose(inv.snacks, 'snacks-p')}</section>`
+      : '';
   const cal = inv.date
     ? `<section class="sec cal rv"><p class="lbl">Ca să nu uitați</p><div class="cal-btns">
 <a class="cal-b" data-gcal href="#" target="_blank" rel="noopener">${CAL}<span>Google Calendar</span></a>
 <button class="cal-b" type="button" data-ics>${CAL}<span>Calendarul telefonului</span></button></div></section>`
     : '';
-  return `${envelope(inv, o)}<main class="inv t-${t.id}">
-${hero(inv, t, o)}${message}${family(inv)}${program(inv)}${note}${rsvp(inv, o)}${cal}
+  return `${envelope(inv, t, o)}<main class="inv t-${t.id} k-${inv.kind}">
+${hero(inv, t, o)}${message}${family(inv)}${program(inv)}${snacks}${note}${rsvp(inv, o)}${cal}
 <footer class="badge"><a href="${escHtml(o.base)}/" target="_blank" rel="noopener">Invitație făcută gratuit cu <b>INVITLITE</b>. Fă-o și pe a ta</a></footer>
 </main>`;
 }
@@ -211,7 +265,7 @@ a{color:inherit}
 .orn{display:block;color:currentColor;width:84px;height:auto;margin:0 auto 26px;opacity:.85}
 .orn-solo{padding:calc(var(--pad)*.5) 0 0;color:var(--accent)}
 .draw{stroke-dasharray:1;stroke-dashoffset:1}
-.is-open .hero .draw,.in .draw,.env .draw{animation:draw 2.6s .9s cubic-bezier(.6,0,.2,1) forwards}
+.is-shown .hero .draw,.in .draw,.env .draw{animation:draw 2.6s .9s cubic-bezier(.6,0,.2,1) forwards}
 .env .draw{animation-delay:.2s}
 @keyframes draw{to{stroke-dashoffset:0}}
 
@@ -256,6 +310,32 @@ a{color:inherit}
 .t-seara .h-date{color:var(--muted);margin-top:14px}
 .t-seara .h-intro{margin:30px auto 0}
 .t-seara .motif{width:clamp(80px,16vw,120px)}
+
+/* film night: the hero is a ticket */
+.hero-tk .h-guest{margin-bottom:26px}
+.tk{display:grid;grid-template-columns:1fr 34%;width:min(100%,680px);text-align:left;margin:0 0 34px;
+background:color-mix(in srgb,var(--paper) 86%,var(--ink));color:var(--ink);
+-webkit-mask:radial-gradient(circle at 66% 0,transparent 13px,#000 13.5px) top/100% 51% no-repeat,radial-gradient(circle at 66% 100%,transparent 13px,#000 13.5px) bottom/100% 51% no-repeat;
+mask:radial-gradient(circle at 66% 0,transparent 13px,#000 13.5px) top/100% 51% no-repeat,radial-gradient(circle at 66% 100%,transparent 13px,#000 13.5px) bottom/100% 51% no-repeat}
+.tk.rv{transform:translateY(46px) rotate(-5deg) scale(.92);transition-duration:1.2s}
+.tk-main{padding:clamp(18px,4vw,34px);min-width:0}
+.tk-kind{font-size:.66rem;letter-spacing:.24em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+.tk-title{font-family:var(--display);font-weight:400;font-size:clamp(1.7rem,6.4vw,3.4rem);line-height:1;letter-spacing:-.02em;margin:0;overflow-wrap:anywhere}
+.tk-by{margin:8px 0 0;color:var(--muted);font-style:italic;font-family:var(--display);font-size:1.15rem}
+.tk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:14px 18px;margin:22px 0 0;padding-top:16px;border-top:1px solid var(--line)}
+.tk-grid dt{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.tk-grid dd{margin:2px 0 0;font-size:.98rem;font-weight:500;line-height:1.25}
+.tk-stub{background:var(--deep);color:var(--on-deep);padding:clamp(16px,3vw,26px) 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;min-width:0;border-left:2px dashed color-mix(in srgb,var(--on-deep) 45%,transparent)}
+.tk-admit{font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;margin:0;opacity:.8}
+.tk-name{font-family:var(--display);font-size:clamp(1.15rem,4.4vw,1.7rem);line-height:1.1;margin:0;overflow-wrap:anywhere}
+.tk-reel{width:54px;height:auto;margin:6px 0}
+.tk-bar{width:100%;max-width:120px;height:26px}
+.tk-no{font-size:.68rem;letter-spacing:.18em;margin:0;opacity:.8;font-variant-numeric:tabular-nums}
+.film-ph{width:min(100%,680px);aspect-ratio:16/9;margin:0 0 30px}
+.hero-tk .h-intro{margin-bottom:16px}
+.hero-tk .h-date{margin-top:0}
+.snacks{text-align:center}
+.snacks-p{font-family:var(--display);font-size:clamp(1.4rem,4vw,2.1rem);line-height:1.3;margin:0 auto;max-width:30ch}
 
 /* message */
 .msg{text-align:center}
@@ -326,9 +406,10 @@ a{color:inherit}
 
 /* reveals: hero staggers once the envelope opens, the rest on scroll */
 .rv{opacity:0;transform:translateY(22px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
-.is-open .hero .rv{opacity:1;transform:none;transition-delay:calc(.9s + var(--i,0)*.12s)}
+.is-shown .hero .rv{opacity:1;transform:none;transition-delay:calc(.9s + var(--i,0)*.12s)}
 .rv.in{opacity:1;transform:none}
 .no-env .hero .rv{transition-delay:calc(var(--i,0)*.08s)}
+.is-shown.post .hero .rv{transition-delay:calc(.15s + var(--i,0)*.12s)}
 @media (prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none}
   .env,.env-flap{transition:opacity .3s}
@@ -336,12 +417,13 @@ a{color:inherit}
   .env-seal{animation:none}
   .draw{stroke-dashoffset:0;animation:none}
 }
-@media print{.env,.rs-form,.cal,.badge{display:none}.rv{opacity:1;transform:none}.hero{min-height:auto}}`;
+${sceneCss()}
+@media print{.env,.cur,.st,.petals,.rs-form,.cal,.badge{display:none}.rv{opacity:1;transform:none}.hero{min-height:auto}}`;
 }
 
 export function renderDocument(inv: Invitation, o: RenderOpts): string {
   const title = escHtml([KIND_LABEL[inv.kind], inv.hosts].filter(Boolean).join(' ') || 'Invitație');
-  return `<!doctype html><html lang="ro" class="${o.envelope ? 'is-sealed' : 'is-open no-env'}"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="ro" class="${o.envelope ? 'is-sealed' : 'is-open is-shown no-env'}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>${title}</title><style>${renderCss(inv, o)}</style></head><body>${renderBody(inv, o)}</body></html>`;
 }

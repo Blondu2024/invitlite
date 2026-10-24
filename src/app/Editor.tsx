@@ -5,6 +5,7 @@ import { THEMES } from '../inv/theme';
 import { waNumber } from '../inv/rsvp';
 import { photoLinkHint, safePhotoUrl } from '../inv/sanitize';
 import { EVENT_KINDS, LIMITS, TEMPLATE_IDS, type Invitation, type Moment } from '../inv/types';
+import { invitationUrl } from '../inv/link';
 import { initialInvitation, persist } from './store';
 import { Preview } from './Preview';
 import { Share } from './Share';
@@ -16,6 +17,15 @@ const HOSTS_HINT: Record<Invitation['kind'], string> = {
   botez: 'Sofia Maria',
   cununie: 'Ana & Mihai',
   aniversare: 'Bunicul Ion, 70 de ani',
+  film: 'Ioana și Radu',
+};
+
+const HOSTS_LABEL: Record<Invitation['kind'], string> = {
+  nunta: 'Numele mirilor',
+  botez: 'Numele copilului',
+  cununie: 'Numele mirilor',
+  aniversare: 'Sărbătoritul',
+  film: 'Gazdele',
 };
 
 function Text(props: {
@@ -245,7 +255,10 @@ export function Editor() {
 
           <div className="grp">
             <h2 className="grp-t">Cine și când</h2>
-            <Text label={inv.kind === 'botez' ? 'Numele copilului' : inv.kind === 'aniversare' ? 'Sărbătoritul' : 'Numele mirilor'} value={inv.hosts} max={LIMITS.hosts} onChange={set('hosts')} placeholder={HOSTS_HINT[inv.kind]} hint={inv.kind === 'nunta' || inv.kind === 'cununie' ? 'Pune „&" între nume pentru așezarea frumoasă.' : undefined} />
+            {inv.kind === 'film' && (
+              <Text label="Ce vedem (titlul serii)" value={inv.title} max={LIMITS.title} onChange={set('title')} placeholder="Maraton de comedii vechi" hint="Apare mare pe bilet. Poate fi orice, nu trebuie să fie numele unui film." />
+            )}
+            <Text label={HOSTS_LABEL[inv.kind]} value={inv.hosts} max={LIMITS.hosts} onChange={set('hosts')} placeholder={HOSTS_HINT[inv.kind]} hint={inv.kind === 'nunta' || inv.kind === 'cununie' ? 'Pune „&" între nume pentru așezarea frumoasă.' : undefined} />
             <div className="two">
               <label className="f">
                 <span className="f-l">Data</span>
@@ -262,11 +275,18 @@ export function Editor() {
             <Text label="Un citat sau un gând (opțional)" value={inv.message} max={LIMITS.message} onChange={set('message')} rows={3} />
           </div>
 
-          <div className="grp">
-            <h2 className="grp-t">Familia</h2>
-            <Text label="Părinții (opțional)" value={inv.parents} max={LIMITS.parents} onChange={set('parents')} rows={2} placeholder={'Elena și Gheorghe Popa\nMaria și Ion Stan'} />
-            <Text label="Nașii (opțional)" value={inv.godparents} max={LIMITS.godparents} onChange={set('godparents')} rows={2} placeholder="Ioana și Andrei Munteanu" />
-          </div>
+          {inv.kind === 'film' ? (
+            <div className="grp">
+              <h2 className="grp-t">La bufet</h2>
+              <Text label="Ce mâncăm și ce bem (opțional)" value={inv.snacks} max={LIMITS.snacks} onChange={set('snacks')} rows={2} placeholder="Popcorn cu unt, pizza făcută în casă și limonadă." />
+            </div>
+          ) : (
+            <div className="grp">
+              <h2 className="grp-t">Familia</h2>
+              <Text label="Părinții (opțional)" value={inv.parents} max={LIMITS.parents} onChange={set('parents')} rows={2} placeholder={'Elena și Gheorghe Popa\nMaria și Ion Stan'} />
+              <Text label="Nașii (opțional)" value={inv.godparents} max={LIMITS.godparents} onChange={set('godparents')} rows={2} placeholder="Ioana și Andrei Munteanu" />
+            </div>
+          )}
 
           <div className="grp">
             <h2 className="grp-t">Programul zilei</h2>
@@ -333,6 +353,9 @@ export function Editor() {
           <div className="phone">
             <Preview inv={inv} onRsvp={showRsvp} />
           </div>
+          <a className="replay" href={invitationUrl(location.origin, inv)} target="_blank" rel="noopener">
+            Vezi deschiderea, așa cum o văd invitații
+          </a>
           {rsvpDemo && (
             <div className="demo-msg" role="status">
               <p className="demo-msg-t">Așa îți vine confirmarea pe WhatsApp:</p>

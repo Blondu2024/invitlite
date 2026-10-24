@@ -61,6 +61,7 @@ export const KIND_LABEL: Record<EventKind, string> = {
   botez: 'Botezul',
   cununie: 'Cununia civilă',
   aniversare: 'Aniversarea',
+  film: 'Seara de film',
 };
 
 /** Lower-case form for running text: "confirmare pentru nunta lui ...". */
@@ -69,7 +70,29 @@ export const KIND_NOUN: Record<EventKind, string> = {
   botez: 'botezul',
   cununie: 'cununia civilă',
   aniversare: 'aniversarea',
+  film: 'seara de film',
 };
+
+/** Small stable hash, so the same guest always gets the same seat. */
+export function hashName(s: string): number {
+  let h = 2166136261;
+  for (const ch of s.trim().toLocaleLowerCase('ro')) {
+    h ^= ch.codePointAt(0)!;
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** A playful cinema seat for a film-night ticket: "Rândul F, locul 7". */
+export function seatFor(guest: string): { row: string; seat: number; no: string } {
+  if (!guest.trim()) return { row: '', seat: 0, no: '0001' };
+  const h = hashName(guest);
+  return {
+    row: 'ABCDEFGHJKL'[h % 11],
+    seat: 1 + ((h >>> 8) % 18),
+    no: String(1 + ((h >>> 16) % 9999)).padStart(4, '0'),
+  };
+}
 
 export function initials(hosts: string): string {
   const words = hosts

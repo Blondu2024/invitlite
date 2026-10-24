@@ -67,5 +67,7 @@ export function normalizeInvitation(raw: unknown): Invitation {
     askKids: o.askKids === true,
     askMenu: o.askMenu === true,
     note: str(o.note, LIMITS.note),
+    title: str(o.title, LIMITS.title),
+    snacks: str(o.snacks, LIMITS.snacks),
   };
 }

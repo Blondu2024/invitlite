@@ -1,5 +1,6 @@
 import { googleCalendarUrl, icsFile } from './calendar';
 import { rsvpUrl } from './rsvp';
+import { petals } from './scenes';
 import type { Invitation } from './types';
 
 export interface WireOpts {
@@ -14,13 +15,60 @@ export function wire(doc: Document, inv: Invitation, o: WireOpts): void {
   const root = doc.documentElement;
   const win = doc.defaultView;
 
+  // The entrance scene plays between the opening tap and the page. Without
+  // one (or with reduced motion) the page shows straight away.
+  const stage = doc.querySelector<HTMLElement>('[data-stage]');
+  const canvas = doc.querySelector<HTMLCanvasElement>('canvas[data-petals]');
+  const reduced = !!win?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let hurryPetals = () => {};
+  let shown = false;
+  const show = () => {
+    if (shown) return;
+    shown = true;
+    root.classList.remove('is-playing');
+    root.classList.add('is-shown');
+    if (stage) {
+      root.classList.add('post');
+      stage.classList.add('st-out');
+      win?.setTimeout(() => stage.remove(), 900);
+    }
+  };
+
   const open = () => {
     root.classList.remove('is-sealed');
     root.classList.add('is-open');
+    try {
+      win?.navigator.vibrate?.(35);
+    } catch {
+      // vibration is a nicety; some browsers throw when it is blocked
+    }
     const env = doc.querySelector<HTMLElement>('[data-env]');
     if (env) win?.setTimeout(() => env.remove(), 1800);
+    if (!stage || reduced || !win) {
+      stage?.remove();
+      canvas?.remove();
+      show();
+      return;
+    }
+    root.classList.add('is-playing');
+    win.setTimeout(show, Number(stage.dataset.stage) || 4000);
+    // Petals keep falling a little over the page after the scene ends.
+    if (canvas) {
+      win.setTimeout(() => {
+        if (skipped) canvas.remove();
+        else hurryPetals = petals(canvas, win);
+      }, 1500);
+    }
+  };
+  let skipped = false;
+  const skip = () => {
+    skipped = true;
+    hurryPetals();
+    show();
   };
   doc.querySelector('[data-open]')?.addEventListener('click', open);
+  doc.querySelector('[data-skip]')?.addEventListener('click', skip);
+  if (root.classList.contains('is-open')) show();
 
   // A photo lives on someone else's server and can vanish. Without it the
   // invitation must look as if there never was one.

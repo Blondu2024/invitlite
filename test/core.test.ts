@@ -5,7 +5,7 @@ import { daysUntil, initials, longDate, roCount } from '../src/inv/format';
 import { invitationHash, openHash } from '../src/inv/link';
 import { rsvpText, rsvpUrl, waNumber } from '../src/inv/rsvp';
 import { eventSpan, fold, googleCalendarUrl, icsFile } from '../src/inv/calendar';
-import { SAMPLE, starter } from '../src/inv/defaults';
+import { SAMPLE, SAMPLE_FILM, starter } from '../src/inv/defaults';
 import { EVENT_KINDS } from '../src/inv/types';
 
 describe('codec + link', () => {
@@ -62,6 +62,24 @@ describe('normalize', () => {
     expect(isoDate('2028-02-29')).toBe('2028-02-29');
     expect(hhmm('9:05')).toBe('09:05');
     expect(hhmm('24:00')).toBe('');
+  });
+
+  it('links made before film night still open, with the new fields empty', () => {
+    const old = { ...SAMPLE } as Record<string, unknown>;
+    delete old.title;
+    delete old.snacks;
+    const n = normalizeInvitation(old);
+    expect(n.title).toBe('');
+    expect(n.snacks).toBe('');
+    expect(n).toEqual(SAMPLE);
+  });
+
+  it('film night round-trips and clamps its fields', () => {
+    expect(decodeInvitation(encodeInvitation(SAMPLE_FILM))).toEqual(SAMPLE_FILM);
+    const n = normalizeInvitation({ kind: 'film', title: 'x'.repeat(500), snacks: 'y'.repeat(500) });
+    expect(n.kind).toBe('film');
+    expect(n.title.length).toBe(80);
+    expect(n.snacks.length).toBe(200);
   });
 
   it('booleans only from real booleans', () => {
@@ -131,6 +149,10 @@ describe('rsvp', () => {
 
   it('vegetarian count never exceeds the party', () => {
     expect(rsvpText(SAMPLE, { ...yes, adults: 1, kids: 0, veg: 9 })).toContain('Meniu vegetarian: 1');
+  });
+
+  it('names film night in the confirmation', () => {
+    expect(rsvpText(SAMPLE_FILM, yes)).toContain('Confirmare pentru seara de film Ioana și Radu (15 ianuarie 2027)');
   });
 
   it('points wa.me at the host', () => {

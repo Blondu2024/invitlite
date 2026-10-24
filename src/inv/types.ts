@@ -1,7 +1,7 @@
-export type EventKind = 'nunta' | 'botez' | 'cununie' | 'aniversare';
+export type EventKind = 'nunta' | 'botez' | 'cununie' | 'aniversare' | 'film';
 export type TemplateId = 'clasic' | 'botanic' | 'seara';
 
-export const EVENT_KINDS: EventKind[] = ['nunta', 'botez', 'cununie', 'aniversare'];
+export const EVENT_KINDS: EventKind[] = ['nunta', 'botez', 'cununie', 'aniversare', 'film'];
 export const TEMPLATE_IDS: TemplateId[] = ['clasic', 'botanic', 'seara'];
 
 /** One stop of the day: the church, the town hall, the restaurant. */
@@ -39,6 +39,10 @@ export interface Invitation {
   askKids: boolean;
   askMenu: boolean;
   note: string;
+  /** Film night: what is showing ("Maraton de comedii"). Empty for the other kinds. */
+  title: string;
+  /** Film night: what is on the snack table. */
+  snacks: string;
 }
 
 export const LIMITS = {
@@ -57,4 +61,6 @@ export const LIMITS = {
   moments: 6,
   phone: 24,
   guest: 80,
+  title: 80,
+  snacks: 200,
 } as const;

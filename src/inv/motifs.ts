@@ -68,8 +68,22 @@ const BALLOONS =
   p('M36 43l2-3 2 3z M62 43l2-3 2 3z') +
   p('M38 43c-3 8 3 12 0 18 M64 43c3 8-3 12 0 18');
 
+/** A film reel with five windows, its strip unspooling to the right. */
+const REEL =
+  c(46, 46, 34) + c(46, 46, 5) +
+  c(46, 28, 7) + c(63.1, 40.4, 7) + c(56.6, 60.6, 7) + c(35.4, 60.6, 7) + c(28.9, 40.4, 7) +
+  p('M58 78c18 1 32-5 46-17 M62 93c19 0 35-7 50-19 M104 61l8 13') +
+  p('M70 84l1 5 M81 81l1.5 5 M92 75l2 4.5');
+
+/** A striped popcorn box, kernels spilling over the rim. */
+const POPCORN =
+  p('M14 36h32l-4 40H18z M25 36l1 40 M35 36l-1 40') +
+  p('M13 36c-3-6 1-11 6-10 1-6 8-8 12-4 3-5 11-4 12 2 5-1 8 5 5 9 M22 26c0-4 2-6 5-7 M38 24c2-2 5-2 7 0');
+
 export function mainMotif(kind: EventKind, cls = 'motif'): string {
   switch (kind) {
+    case 'film':
+      return svg(`${cls} m-reel`, '0 0 120 100', REEL);
     case 'botez':
       return svg(`${cls} m-dove`, '0 0 124 100', DOVE);
     case 'cununie':
@@ -83,6 +97,8 @@ export function mainMotif(kind: EventKind, cls = 'motif'): string {
 
 export function smallMotif(kind: EventKind, cls = 'orn'): string {
   switch (kind) {
+    case 'film':
+      return svg(`${cls} m-popcorn`, '0 0 60 80', POPCORN);
     case 'botez':
       return svg(`${cls} m-candle`, '0 0 60 116', CANDLE);
     case 'cununie':
