@@ -2,8 +2,11 @@ name = "invitlite-photos"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
+# the old workers.dev address keeps serving photos uploaded before the domain
+routes = [{ pattern = "poze.invitlite.app", custom_domain = true }]
+
 [vars]
-ORIGINS = "https://invitlite-preview.vercel.app,https://invitlite.app,http://localhost:5173,http://localhost:4173"
+ORIGINS = "https://invitlite-preview.vercel.app,https://invitlite.app,https://www.invitlite.app,http://localhost:5173,http://localhost:4173"
 
 # Workers KV: no card needed on the account; each photo expires by itself.
 [[kv_namespaces]]
