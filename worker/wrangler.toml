@@ -1,0 +1,11 @@
+name = "invitlite-photos"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+ORIGINS = "https://invitlite-preview.vercel.app,https://invitlite.app,http://localhost:5173,http://localhost:4173"
+
+# Workers KV: no card needed on the account; each photo expires by itself.
+[[kv_namespaces]]
+binding = "PHOTOS"
+id = "6ce7ba21e8764704b193d6643188318d"

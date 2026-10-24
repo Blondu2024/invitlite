@@ -34,7 +34,8 @@ export function telHref(phone: string): string {
 /** Photos: https only (an http image on an https page is blocked anyway). */
 export function safePhotoUrl(url: string): string {
   const t = url.trim();
-  return /^https:\/\/[^\s"'<>]+$/i.test(t) ? t : '';
+  // http only for a photo server running on the host's own machine, in development
+  return /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/)[^\s"'<>]+$/i.test(t) ? t : '';
 }
 
 /**

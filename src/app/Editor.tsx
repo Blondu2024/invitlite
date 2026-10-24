@@ -10,6 +10,7 @@ import { photoLinkHint, safePhotoUrl } from '../inv/sanitize';
 import { FONT_IDS, LIMITS, PICS, TINT_IDS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from '../inv/types';
 import { invitationUrl } from '../inv/link';
 import { initialInvitation, persist } from './store';
+import { canDelete, deletePhoto, PHOTO_API, uploadPhoto } from './upload';
 import { Preview } from './Preview';
 import { Share } from './Share';
 
@@ -95,19 +96,54 @@ function MomentRow(props: {
   );
 }
 
-function PhotoField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function PhotoField({ value, date, onChange }: { value: string; date: string; onChange: (v: string) => void }) {
   const [state, setState] = useState<'idle' | 'ok' | 'bad'>('idle');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const pickRef = useRef<HTMLInputElement>(null);
   const url = safePhotoUrl(value);
   const hint = photoLinkHint(value);
+  const ours = !!PHOTO_API && value.startsWith(`${PHOTO_API}/p/`);
   useEffect(() => setState('idle'), [url]);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setErr('');
+    setBusy(true);
+    try {
+      onChange((await uploadPhoto(file, date)).url);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+      if (pickRef.current) pickRef.current.value = '';
+    }
+  };
+  const remove = async () => {
+    if (canDelete(value)) await deletePhoto(value);
+    onChange('');
+  };
+
   return (
     <div className="f photo-f">
-      <label className="f">
-        <span className="f-l">Poza voastră (opțional, link)</span>
-        <input type="url" inputMode="url" value={value} maxLength={LIMITS.photo} placeholder="https://i.postimg.cc/..." onChange={(e) => onChange(e.target.value)} />
-      </label>
-      {!value && <span className="f-h">Fără poza voastră, invitația are deja o fotografie aleasă pentru tipul ei. Cu poza voastră, o înlocuiește.</span>}
-      {hint && <span className="f-h f-warn">{hint}</span>}
+      <span className="f-l">Poza voastră (opțional)</span>
+      {PHOTO_API && (
+        <div className="up">
+          <input ref={pickRef} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0])} />
+          <button type="button" className="up-b" disabled={busy} onClick={() => pickRef.current?.click()}>
+            {busy ? 'Se pregătește și se urcă...' : value ? 'Alege altă poză' : 'Alege o poză de pe telefon sau PC'}
+          </button>
+          {value && (
+            <button type="button" className="listen" onClick={remove}>
+              {ours ? 'Scoate poza' : 'Scoate linkul'}
+            </button>
+          )}
+        </div>
+      )}
+      {err && <span className="f-h f-warn">{err}</span>}
+      {!value && <span className="f-h">Fără poza voastră, invitația folosește fotografia aleasă mai sus. Cu poza voastră, o înlocuiește.</span>}
+      {ours && <span className="f-h">Poza e micșorată și fără datele ascunse din ea (locul, telefonul). O păstrăm doar pentru invitație și se șterge singură la 30 de zile după eveniment.</span>}
+      {hint && !ours && <span className="f-h f-warn">{hint}</span>}
       {url && (
         <div className="photo-prev">
           <img
@@ -118,20 +154,23 @@ function PhotoField({ value, onChange }: { value: string; onChange: (v: string) 
             onError={() => setState('bad')}
             style={state === 'bad' ? { display: 'none' } : undefined}
           />
-          {state === 'ok' && <span className="f-h">Poza se vede. Așa o vor vedea și invitații.</span>}
+          {state === 'ok' && !ours && <span className="f-h">Poza se vede. Așa o vor vedea și invitații.</span>}
           {state === 'bad' && (
             <span className="f-h f-warn">Poza nu se încarcă de la acest link. Invitația va arăta fără poză până pui un link bun.</span>
           )}
         </div>
       )}
-      <details className="howto">
-        <summary>Cum iau linkul unei poze?</summary>
+      <details className="howto" open={!PHOTO_API && !value ? true : undefined}>
+        <summary>{PHOTO_API ? 'Ai poza deja pe internet? Pune linkul ei' : 'Cum pun o poză?'}</summary>
+        <label className="f">
+          <span className="f-l">Linkul pozei</span>
+          <input type="url" inputMode="url" value={ours ? '' : value} maxLength={LIMITS.photo} placeholder="https://i.postimg.cc/..." onChange={(e) => onChange(e.target.value)} />
+        </label>
         <ol>
           <li>Intră pe postimages.org (gratuit, fără cont) și apasă „Choose images".</li>
           <li>Alege poza din telefon. După ce se urcă, copiază „Direct link" (începe cu https://i.postimg.cc/).</li>
           <li>Lipește-l aici.</li>
         </ol>
-        <p>Poza nu intră în link, doar adresa ei. Așa linkul rămâne scurt și codul QR mic. Dacă ștergi poza de pe postimages, invitația rămâne, doar fără poză.</p>
       </details>
     </div>
   );
@@ -388,7 +427,7 @@ export function Editor() {
               </label>
               <Text label="Orașul" value={inv.city} max={LIMITS.city} onChange={set('city')} placeholder="Galați" />
             </div>
-            <PhotoField value={inv.photo} onChange={set('photo')} />
+            <PhotoField value={inv.photo} date={inv.date} onChange={set('photo')} />
           </div>
 
           <div className="grp">

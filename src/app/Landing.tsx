@@ -49,6 +49,7 @@ const FAQ: [string, string][] = [
   ['Muzica și sunetele au drepturi de autor?', 'Nu. Melodiile sunt compuse pentru INVITLITE și le cântă chiar telefonul invitatului. Pornesc doar după ce deschide plicul și se opresc dintr-o atingere.'],
   ['Și dacă mai schimb ceva după ce am trimis-o?', 'Se schimbă și linkul, pentru că linkul este invitația. Trimite-l pe cel nou. Cei care au deja linkul vechi văd varianta veche.'],
   ['Merge pentru cei plecați în străinătate?', 'Da. Scrie numărul cu prefix (+44, +39, +45) și confirmările vin oriunde ai fi. Invitații o deschid de pe orice telefon.'],
+  ['Pot pune poza noastră?', 'Da, direct de pe telefon sau calculator. O micșorăm la voi în telefon și îi scoatem datele ascunse (locul, telefonul), apoi o păstrăm doar pentru invitație. Se șterge singură la 30 de zile după eveniment, sau imediat, din editor.'],
   ['Pot s-o tipăresc?', 'Da. Primești un cod QR pe care îl pui pe invitația de hârtie. Cine îl scanează ajunge la confirmare.'],
 ];
 
@@ -439,7 +440,7 @@ export function Landing() {
 
       <footer className="lp-foot">
         <p>INVITLITE este un proiect gratuit al ELI-SAMI-TECH S.R.L., CUI 52120263, J2025050145008, București.</p>
-        <p>Nu folosim cookie-uri și nu stocăm invitațiile. Fonturile sunt găzduite la noi, nu la Google.</p>
+        <p>Nu folosim cookie-uri și nu stocăm invitațiile. Păstrăm doar pozele pe care le urcați voi, până la 30 de zile după eveniment. Fonturile sunt găzduite la noi, nu la Google.</p>
       </footer>
     </div>
   );
