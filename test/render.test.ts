@@ -33,7 +33,7 @@ describe('render', () => {
     };
     for (const t of TEMPLATE_IDS) {
       const html = renderBody({ ...inv, template: t }, { ...o, guest: evil });
-      expect(html).not.toContain('<img');
+      expect(html).not.toContain('<img src=x');
       expect(html).not.toContain('javascript:');
     }
   });
@@ -240,7 +240,7 @@ describe('entrance scenes', () => {
     const evil = '<img src=x onerror=alert(1)>';
     for (const k of EVENT_KINDS) {
       const inv = { ...SAMPLE, kind: k, hosts: evil, city: evil, moments: [{ ...SAMPLE.moments[0], place: evil }] };
-      expect(renderBody(inv, { ...o, guest: evil }), k).not.toContain('<img');
+      expect(renderBody(inv, { ...o, guest: evil }), k).not.toContain('<img src=x');
     }
   });
 
@@ -608,7 +608,7 @@ describe('film night', () => {
     const evil = '<img src=x onerror=alert(1)>';
     for (const t of TEMPLATE_IDS) {
       const html = renderBody({ ...SAMPLE_FILM, template: t, title: evil, snacks: evil }, { ...o, guest: evil });
-      expect(html).not.toContain('<img');
+      expect(html).not.toContain('<img src=x');
     }
   });
 
@@ -637,8 +637,9 @@ describe('motifs and photo', () => {
     }
   });
 
-  it('the envelope carries the motif too', () => {
-    expect(renderBody({ ...SAMPLE, kind: 'botez' }, o)).toMatch(/env-motif m-dove/);
+  it("the envelope lies on the kind's own photograph, or on the host's", () => {
+    expect(renderBody({ ...SAMPLE, kind: 'botez' }, o)).toContain("--bp:url('https://invitlite.app/img/bg/botez-p.webp');--bl:url('https://invitlite.app/img/bg/botez-l.webp')");
+    expect(renderBody({ ...SAMPLE, photo: 'https://i.postimg.cc/a/b.jpg' }, o)).toContain("--bp:url('https://i.postimg.cc/a/b.jpg')");
   });
 
   it('renders the photo in every style, without leaking the referrer', () => {
@@ -651,10 +652,20 @@ describe('motifs and photo', () => {
     }
   });
 
-  it('no photo, no frame', () => {
+  it('without a photo of their own, every kind gets its own photograph, in every style', () => {
     for (const t of TEMPLATE_IDS) {
-      expect(renderBody({ ...SAMPLE, template: t }, o)).not.toContain('data-photo');
+      for (const k of EVENT_KINDS) {
+        const html = renderBody({ ...SAMPLE, template: t, kind: k }, o);
+        expect(html, `${t}/${k}`).toContain('data-photo-box');
+        expect(html, `${t}/${k}`).toMatch(new RegExp(`src="https://invitlite.app/img/bg/${k}-[pl].webp"`));
+        expect(html, `${t}/${k}`).not.toContain('referrerpolicy');
+      }
     }
+  });
+
+  it('every photograph the invitations point at ships with the site', async () => {
+    const { existsSync } = await import('node:fs');
+    for (const k of EVENT_KINDS) for (const s of ['p', 'l']) expect(existsSync(`public/img/bg/${k}-${s}.webp`), `${k}-${s}`).toBe(true);
   });
 
   it('a photo that fails to load disappears and takes its frame with it', () => {

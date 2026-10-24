@@ -123,6 +123,7 @@ function PhotoField({ value, onChange }: { value: string; onChange: (v: string) 
         <span className="f-l">Poza voastră (opțional, link)</span>
         <input type="url" inputMode="url" value={value} maxLength={LIMITS.photo} placeholder="https://i.postimg.cc/..." onChange={(e) => onChange(e.target.value)} />
       </label>
+      {!value && <span className="f-h">Fără poza voastră, invitația are deja o fotografie aleasă pentru tipul ei. Cu poza voastră, o înlocuiește.</span>}
       {hint && <span className="f-h f-warn">{hint}</span>}
       {url && (
         <div className="photo-prev">

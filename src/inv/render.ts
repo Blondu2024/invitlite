@@ -61,6 +61,23 @@ function barcode(seed: number): string {
   return `<svg class="tk-bar" viewBox="0 0 96 24" preserveAspectRatio="none" aria-hidden="true" fill="currentColor">${bars.join('')}</svg>`;
 }
 
+/**
+ * The photo at the top. The host's own when they gave one; otherwise the kind's
+ * own photograph, served next to the fonts, so nobody gets a drawing instead.
+ * `wide` swaps to the landscape crop on landscape screens.
+ */
+export function stockPhoto(kind: Invitation['kind'], base: string, shape: 'p' | 'l'): string {
+  return `${base}/img/bg/${kind}-${shape}.webp`;
+}
+
+function photoTag(inv: Invitation, o: RenderOpts, wide = false): string {
+  const attrs = 'alt="" decoding="async" data-photo';
+  if (inv.photo) return `<img src="${escHtml(inv.photo)}" ${attrs} referrerpolicy="no-referrer">`;
+  const p = escHtml(stockPhoto(inv.kind, o.base, 'p'));
+  if (!wide) return `<img src="${p}" ${attrs}>`;
+  return `<picture><source media="(orientation:landscape)" srcset="${escHtml(stockPhoto(inv.kind, o.base, 'l'))}"><img src="${p}" ${attrs}></picture>`;
+}
+
 /** Film night: the invitation is a cinema ticket with the guest's name and seat. */
 function ticketHero(inv: Invitation, o: RenderOpts): string {
   const first = inv.moments[0];
@@ -70,9 +87,7 @@ function ticketHero(inv: Invitation, o: RenderOpts): string {
   const cell = (k: string, v: string) => (v ? `<div><dt>${k}</dt><dd>${escHtml(v)}</dd></div>` : '');
   const guest = o.guest ? `<p class="h-guest rv" style="--i:0">Dragă ${escHtml(o.guest)},</p>` : '';
   const intro = inv.intro ? `<p class="h-intro rv" style="--i:2">${escHtml(inv.intro)}</p>` : '';
-  const img = inv.photo
-    ? `<figure class="h-photo film-ph rv" style="--i:3" data-photo-box><img src="${escHtml(inv.photo)}" alt="" referrerpolicy="no-referrer" decoding="async" data-photo></figure>`
-    : '';
+  const img = `<figure class="h-photo film-ph rv" style="--i:3" data-photo-box>${inv.photo ? photoTag(inv, o) : `<img src="${escHtml(stockPhoto('film', o.base, 'l'))}" alt="" decoding="async" data-photo>`}</figure>`;
   const count = countdownText(inv, o.today);
   return `<header class="hero hero-tk">${guest}
 <div class="tk rv" style="--i:1">
@@ -102,9 +117,7 @@ function hero(inv: Invitation, t: Theme, o: RenderOpts): string {
   const countEl = `<p class="h-count rv" style="--i:6" data-count>${escHtml(count)}</p>`;
 
   const motif = mainMotif(inv.kind, 'motif rv');
-  const img = inv.photo
-    ? `<img src="${escHtml(inv.photo)}" alt="" referrerpolicy="no-referrer" decoding="async" data-photo>`
-    : '';
+  const img = photoTag(inv, o, t.id === 'seara');
 
   if (t.id === 'seara') {
     const amp = escHtml(inv.hosts)
@@ -198,14 +211,17 @@ ${inv.askMenu ? `<label class="rs-f"><span>Meniu vegetarian</span><select name="
 function envelope(inv: Invitation, t: Theme, o: RenderOpts): string {
   if (!o.envelope) return '';
   if (inv.kind === 'film') return curtain(o.guest) + stage(inv, t);
-  return envelopeOnly(inv, o) + stage(inv, t);
+  return envelopeOnly(inv, t, o) + stage(inv, t);
 }
 
-function envelopeOnly(inv: Invitation, o: RenderOpts): string {
+function envelopeOnly(inv: Invitation, t: Theme, o: RenderOpts): string {
   const to = o.guest ? `Pentru ${escHtml(o.guest)}` : 'O invitație pentru tine';
-  return `<div class="env" data-env>
+  const bg = (shape: 'p' | 'l') => `url('${escHtml(inv.photo && shape === 'p' ? inv.photo : stockPhoto(inv.kind, o.base, shape))}')`;
+  const land = inv.photo ? bg('p') : bg('l');
+  return `<div class="env${t.id === 'seara' ? ' env-night' : ''}" data-env>
+<div class="env-bg" style="--bp:${bg('p')};--bl:${land}" aria-hidden="true"></div>
 <div class="env-flap" aria-hidden="true"></div>
-<div class="env-body">${mainMotif(inv.kind, 'env-motif')}<p class="env-to">${to}</p>
+<div class="env-body"><p class="env-to">${to}</p>
 <button class="env-seal" type="button" data-open aria-label="Deschide invitația"><span>${escHtml(initials(inv.hosts) || '&')}</span></button>
 <p class="env-hint">Atinge sigiliul ca să deschizi</p></div></div>`;
 }
@@ -277,6 +293,11 @@ a{color:inherit}
 /* photo (hosted elsewhere; removed cleanly if it fails to load) */
 .h-photo{margin:0 0 34px;overflow:hidden;background:var(--line)}
 .h-photo img,.h-bg img{display:block;width:100%;height:100%;object-fit:cover}
+.h-photo picture,.h-bg picture{display:contents}
+/* the photo takes the drawing's place; if it fails to load, the drawing comes back */
+.hero:has([data-photo-box]) .motif{display:none}
+.is-shown .hero [data-photo-box] img{animation:kb 18s ease-out both}
+@keyframes kb{from{transform:scale(1.12)}}
 
 /* clasic */
 .t-clasic .h-names{font-style:italic;font-weight:500}
@@ -305,7 +326,9 @@ a{color:inherit}
 .t-seara .hero{padding:0}
 .t-seara .h-in{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:var(--pad) var(--gut)}
 .t-seara .h-bg{position:absolute;inset:0;z-index:0}
-.t-seara .h-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,20,27,.55),rgba(18,20,27,.82) 55%,var(--paper))}
+.t-seara .h-bg{overflow:hidden}
+.t-seara .h-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,20,27,.3),rgba(18,20,27,.62) 50%,rgba(18,20,27,.8) 80%,var(--paper))}
+.t-seara .has-photo .h-names{text-shadow:0 2px 24px rgba(0,0,0,.5)}
 .t-seara .has-photo .h-kind,.t-seara .has-photo .h-amp,.t-seara .has-photo .h-nums i{color:var(--accent)}
 .t-seara .has-photo .h-date,.t-seara .has-photo .h-city,.t-seara .has-photo .h-intro,.t-seara .has-photo .h-count{color:#D8CFBB}
 .t-seara .h-names{display:flex;flex-direction:column;align-items:center;font-weight:400}
@@ -397,13 +420,22 @@ mask:radial-gradient(circle at 66% 0,transparent 13px,#000 13.5px) top/100% 51% 
 
 /* envelope */
 .env{position:fixed;inset:0;z-index:10;background:var(--deep);color:var(--on-deep);display:grid;place-items:center;perspective:1400px;transition:transform 1s .55s cubic-bezier(.7,0,.2,1)}
-.env-flap{position:absolute;left:0;right:0;top:0;height:52%;background:var(--deep);filter:brightness(.88);clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:top;transition:transform .8s cubic-bezier(.6,0,.2,1)}
+.env-bg{position:absolute;inset:0;overflow:hidden;background:var(--deep)}
+.env-bg::before{content:'';position:absolute;inset:-2%;background:var(--bp) center/cover no-repeat;animation:kb 16s ease-out both}
+@media (orientation:landscape){.env-bg::before{background-image:var(--bl)}}
+.env-bg::after{content:'';position:absolute;inset:0;background:color-mix(in srgb,var(--deep) 70%,transparent)}
+.env-flap{position:absolute;left:0;right:0;top:0;height:52%;background:color-mix(in srgb,var(--deep) 86%,transparent);filter:brightness(.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:top;transition:transform .8s cubic-bezier(.6,0,.2,1)}
 .env-body{position:relative;text-align:center;padding:0 24px}
 .env-motif{display:block;width:110px;height:auto;margin:0 auto 26px;color:var(--on-deep);opacity:.9}
-.env-to{font-family:var(--display);font-size:clamp(1.6rem,6vw,2.6rem);margin:0 0 36px;font-style:italic}
+.env-to{font-family:var(--display);font-size:clamp(1.8rem,7vw,3rem);margin:0 0 36px;font-style:italic;text-shadow:0 2px 18px rgba(0,0,0,.35)}
 .env-seal{width:96px;height:96px;border-radius:50%;border:0;cursor:pointer;background:var(--on-deep);color:var(--deep);font-family:var(--display);font-size:1.7rem;letter-spacing:.06em;box-shadow:0 0 0 6px color-mix(in srgb,var(--on-deep) 30%,transparent);animation:pulse 2.4s ease-in-out infinite}
 .env-seal:focus-visible{outline:2px solid var(--on-deep);outline-offset:8px}
 .env-hint{margin:26px 0 0;font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;opacity:.75}
+.env-night{background:var(--paper);color:var(--ink)}
+.env-night .env-bg::after{background:color-mix(in srgb,var(--paper) 74%,transparent)}
+.env-night .env-flap{background:color-mix(in srgb,var(--paper) 86%,transparent)}
+.env-night .env-seal{background:var(--accent);color:var(--paper);box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 30%,transparent);animation-name:pulse-n}
+@keyframes pulse-n{50%{box-shadow:0 0 0 14px color-mix(in srgb,var(--accent) 12%,transparent)}}
 @keyframes pulse{50%{box-shadow:0 0 0 14px color-mix(in srgb,var(--on-deep) 12%,transparent)}}
 .is-open .env-flap{transform:rotateX(180deg)}
 .is-open .env{transform:translateY(-105%)}
@@ -419,7 +451,7 @@ mask:radial-gradient(circle at 66% 0,transparent 13px,#000 13.5px) top/100% 51% 
   .rv{opacity:1;transform:none;transition:none}
   .env,.env-flap{transition:opacity .3s}
   .is-open .env{transform:none;opacity:0;pointer-events:none}
-  .env-seal{animation:none}
+  .env-seal,.env-bg::before,.hero [data-photo-box] img{animation:none!important}
   .draw{stroke-dashoffset:0;animation:none}
 }
 ${sceneCss()}

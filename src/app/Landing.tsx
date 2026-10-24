@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { SAMPLE, sampleFor } from '../inv/defaults';
 import { invitationUrl } from '../inv/link';
-import { mainMotif } from '../inv/motifs';
 import { rsvpText } from '../inv/rsvp';
 import { THEMES } from '../inv/theme';
 import { EVENT_KINDS, TEMPLATE_IDS, type EventKind } from '../inv/types';
@@ -135,6 +134,7 @@ export function Landing() {
       </header>
 
       <section className="lp-hero">
+        <div className="lp-bg" key={kind} style={{ backgroundImage: `url(/img/bg/${kind}-l.webp)` }} aria-hidden="true" />
         <div className="lp-hero-t">
           <p className="kicker">Invitații digitale. Gratuite.</p>
           <h1 className="lp-h1">
@@ -207,7 +207,9 @@ export function Landing() {
           {EVENT_KINDS.map((k, i) => (
             <li key={k} className="rv-l">
               <span className="n">{String(i + 1).padStart(2, '0')}</span>
-              <span className="op-m" dangerouslySetInnerHTML={{ __html: mainMotif(k, 'op-svg') }} />
+              <span className="op-ph">
+                <img src={`/img/bg/${k}-p.webp`} alt="" loading="lazy" decoding="async" />
+              </span>
               <div className="op-t">
                 <h3>{OPENINGS[k][0]}</h3>
                 <p>{OPENINGS[k][1]}</p>
