@@ -225,7 +225,12 @@ export function renderBody(inv: Invitation, o: RenderOpts): string {
 <a class="cal-b" data-gcal href="#" target="_blank" rel="noopener">${CAL}<span>Google Calendar</span></a>
 <button class="cal-b" type="button" data-ics>${CAL}<span>Calendarul telefonului</span></button></div></section>`
     : '';
-  return `${envelope(inv, t, o)}<main class="inv t-${t.id} k-${inv.kind}">
+  // Shown by wire() once the music has started (it needs the opening tap).
+  const tune =
+    inv.music && o.envelope
+      ? `<button class="mus" type="button" data-music hidden aria-pressed="false" aria-label="Pornește muzica"><span class="mus-eq" aria-hidden="true"><i></i><i></i><i></i></span><span>Muzică</span></button>`
+      : '';
+  return `${envelope(inv, t, o)}${tune}<main class="inv t-${t.id} k-${inv.kind}">
 ${hero(inv, t, o)}${message}${family(inv)}${program(inv)}${snacks}${note}${rsvp(inv, o)}${cal}
 <footer class="badge"><a href="${escHtml(o.base)}/" target="_blank" rel="noopener">Invitație făcută gratuit cu <b>INVITLITE</b>. Fă-o și pe a ta</a></footer>
 </main>`;
@@ -418,7 +423,19 @@ mask:radial-gradient(circle at 66% 0,transparent 13px,#000 13.5px) top/100% 51% 
   .draw{stroke-dashoffset:0;animation:none}
 }
 ${sceneCss()}
-@media print{.env,.cur,.st,.petals,.rs-form,.cal,.badge{display:none}.rv{opacity:1;transform:none}.hero{min-height:auto}}`;
+/* background music switch */
+.mus{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:8;display:flex;align-items:center;gap:9px;padding:10px 14px 10px 12px;
+font:inherit;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:999px;cursor:pointer;box-shadow:0 6px 18px -10px rgba(0,0,0,.35)}
+.mus[hidden]{display:none}
+.mus:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.mus-eq{display:flex;align-items:flex-end;gap:2px;height:12px}
+.mus-eq i{width:3px;height:100%;background:var(--accent);transform-origin:50% 100%;transform:scaleY(.3)}
+.mus[aria-pressed=true] .mus-eq i{animation:eq .9s ease-in-out infinite alternate}
+.mus-eq i:nth-child(2){animation-delay:-.3s!important}
+.mus-eq i:nth-child(3){animation-delay:-.6s!important}
+@keyframes eq{0%{transform:scaleY(.3)}100%{transform:scaleY(1)}}
+@media (prefers-reduced-motion:reduce){.mus[aria-pressed=true] .mus-eq i{animation:none;transform:scaleY(.8)}}
+@media print{.mus,.env,.cur,.st,.petals,.rs-form,.cal,.badge{display:none}.rv{opacity:1;transform:none}.hero{min-height:auto}}`;
 }
 
 export function renderDocument(inv: Invitation, o: RenderOpts): string {

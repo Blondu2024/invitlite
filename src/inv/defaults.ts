@@ -10,13 +10,14 @@ const m = (title: string, time: string, place = '', address = ''): Moment => ({
   mapUrl: '',
 });
 
-export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 'moments' | 'askKids' | 'askMenu'>> = {
+export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 'moments' | 'askKids' | 'askMenu' | 'music'>> = {
   nunta: {
     intro: 'Cu bucurie în suflet, vă invităm să fiți alături de noi în ziua în care ne unim destinele.',
     message: 'Dragostea nu constă în a ne privi unul pe altul, ci în a privi împreună în aceeași direcție.',
     moments: [m('Cununia religioasă', '15:00'), m('Petrecerea', '19:00')],
     askKids: true,
     askMenu: true,
+    music: 'vals',
   },
   botez: {
     intro: 'Pentru că cele mai frumoase momente se trăiesc alături de cei dragi, vă invităm la botezul nostru.',
@@ -24,6 +25,7 @@ export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 
     moments: [m('Taina Sfântului Botez', '12:00'), m('Masa festivă', '14:00')],
     askKids: true,
     askMenu: false,
+    music: 'cutie',
   },
   cununie: {
     intro: 'Ne spunem „da" în fața ofițerului de stare civilă și vrem să fiți acolo.',
@@ -31,6 +33,7 @@ export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 
     moments: [m('Cununia civilă', '13:00'), m('Masa în familie', '15:00')],
     askKids: false,
     askMenu: false,
+    music: 'pian',
   },
   aniversare: {
     intro: 'Facem o petrecere și locul tău e la masa noastră.',
@@ -38,6 +41,7 @@ export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 
     moments: [m('Petrecerea', '19:00')],
     askKids: false,
     askMenu: false,
+    music: 'petrecere',
   },
   copii: {
     intro: 'Facem o petrecere cu baloane, tort și multă joacă. Ne-ar bucura tare să fiți și voi acolo!',
@@ -45,6 +49,7 @@ export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 
     moments: [m('Petrecerea', '16:00')],
     askKids: true,
     askMenu: false,
+    music: 'petrecere',
   },
   film: {
     intro: 'Stingem lumina, facem popcorn și ne strângem pe canapea. Locul tău e păstrat.',
@@ -52,6 +57,7 @@ export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 
     moments: [m('Începe filmul', '20:00')],
     askKids: false,
     askMenu: false,
+    music: 'jazz',
   },
 };
 
@@ -74,6 +80,7 @@ export function starter(kind: EventKind, prev?: Invitation): Invitation {
     rsvpBy: prev?.rsvpBy ?? '',
     askKids: s.askKids,
     askMenu: s.askMenu,
+    music: s.music,
     note: prev?.note ?? '',
     title: prev?.title ?? '',
     snacks: prev?.snacks ?? '',
@@ -104,6 +111,7 @@ export const SAMPLE: Invitation = {
   note: 'Ținuta: elegantă. Copiii sunt bineveniți, avem și un colț de joacă pentru ei.',
   title: '',
   snacks: '',
+  music: 'vals',
 };
 
 /** The film-night example. Fictional people, an invented title. */
@@ -124,4 +132,5 @@ export const SAMPLE_FILM: Invitation = {
   note: 'Aduceți-vă papucii. Pături avem.',
   title: 'Maraton de comedii vechi',
   snacks: 'Popcorn cu unt, pizza făcută în casă și limonadă.',
+  music: 'jazz',
 };

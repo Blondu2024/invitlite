@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { music, MUSIC_LABEL, type Music } from '../inv/music';
+import { sound, type Sound } from '../inv/sound';
 import { starter } from '../inv/defaults';
 import { KIND_LABEL } from '../inv/format';
 import { THEMES } from '../inv/theme';
 import { waNumber } from '../inv/rsvp';
 import { photoLinkHint, safePhotoUrl } from '../inv/sanitize';
-import { EVENT_KINDS, LIMITS, TEMPLATE_IDS, type Invitation, type Moment } from '../inv/types';
+import { EVENT_KINDS, LIMITS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from '../inv/types';
 import { invitationUrl } from '../inv/link';
 import { initialInvitation, persist } from './store';
 import { Preview } from './Preview';
@@ -151,6 +153,60 @@ function PhotoField({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
+/** Background music: pick a tune, listen to it here, or leave the invitation quiet. */
+function MusicField(props: { value: Invitation['music']; onChange: (v: Invitation['music']) => void }) {
+  const { value, onChange } = props;
+  const player = useRef<{ snd: Sound; tune: Music; id: MusicId } | null>(null);
+  const [listening, setListening] = useState(false);
+
+  const stop = () => {
+    player.current?.tune.stop();
+    setListening(false);
+  };
+  const listen = (id: MusicId) => {
+    let p = player.current;
+    p?.tune.stop();
+    const snd = p?.snd ?? sound(window, { remember: false });
+    if (!snd) return;
+    p = { snd, tune: music(snd, window, id), id };
+    player.current = p;
+    p.tune.start();
+    setListening(true);
+  };
+  useEffect(() => () => player.current?.tune.stop(), []);
+
+  const pick = (id: Invitation['music']) => {
+    onChange(id);
+    if (listening) {
+      if (id) listen(id);
+      else stop();
+    }
+  };
+
+  return (
+    <div className="grp">
+      <h2 className="grp-t">Muzica de fundal</h2>
+      <div className="chips" role="radiogroup" aria-label="Muzica de fundal">
+        {(['', ...MUSIC_IDS] as const).map((id) => (
+          <button key={id || 'none'} type="button" role="radio" aria-checked={value === id} className={value === id ? 'chip on' : 'chip'} onClick={() => pick(id)}>
+            {id ? MUSIC_LABEL[id].name : 'Fără'}
+          </button>
+        ))}
+      </div>
+      {value ? (
+        <p className="f-h">
+          {MUSIC_LABEL[value].mood[0].toLocaleUpperCase('ro') + MUSIC_LABEL[value].mood.slice(1)}. Compusă pentru INVITLITE, fără drepturi de plătit. Pornește doar când invitatul deschide plicul și are buton de oprit.{' '}
+          <button type="button" className="listen" onClick={() => (listening ? stop() : listen(value))}>
+            {listening ? 'Oprește' : 'Ascultă'}
+          </button>
+        </p>
+      ) : (
+        <p className="f-h">Invitația se deschide în liniște, doar cu efectele scurte ale scenei.</p>
+      )}
+    </div>
+  );
+}
+
 export function Editor() {
   const [inv, setInv] = useState<Invitation>(() => initialInvitation(location.hash));
   const [tab, setTab] = useState<Tab>('form');
@@ -254,6 +310,8 @@ export function Editor() {
               })}
             </div>
           </div>
+
+          <MusicField value={inv.music} onChange={set('music')} />
 
           <div className="grp">
             <h2 className="grp-t">Cine și când</h2>

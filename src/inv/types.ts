@@ -4,6 +4,10 @@ export type TemplateId = 'clasic' | 'botanic' | 'seara';
 export const EVENT_KINDS: EventKind[] = ['nunta', 'botez', 'cununie', 'aniversare', 'copii', 'film'];
 export const TEMPLATE_IDS: TemplateId[] = ['clasic', 'botanic', 'seara'];
 
+/** Background tunes, composed for this project and played by the browser itself. */
+export type MusicId = 'vals' | 'cutie' | 'pian' | 'petrecere' | 'jazz';
+export const MUSIC_IDS: MusicId[] = ['vals', 'cutie', 'pian', 'petrecere', 'jazz'];
+
 /** One stop of the day: the church, the town hall, the restaurant. */
 export interface Moment {
   title: string;
@@ -43,6 +47,8 @@ export interface Invitation {
   title: string;
   /** Film night: what is on the snack table. */
   snacks: string;
+  /** Background music, '' for none. Starts only when the guest opens the invitation. */
+  music: MusicId | '';
 }
 
 export const LIMITS = {

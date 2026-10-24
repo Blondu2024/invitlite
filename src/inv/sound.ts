@@ -26,6 +26,9 @@ export interface Sound {
   muted(): boolean;
   /** Flips the mute, remembers it, returns the new state. */
   toggle(): boolean;
+  /** The context and the master volume, for the background music to share. */
+  ac: AudioContext;
+  bus: AudioNode;
 }
 
 const KEY = 'invitlite-sunet';
@@ -50,7 +53,8 @@ function saveMute(win: Window, off: boolean): void {
 
 type AudioCtor = typeof AudioContext;
 
-export function sound(win: Window): Sound | null {
+/** `remember: false` (the editor's "listen" button) ignores and never writes the guest's mute. */
+export function sound(win: Window, { remember = true } = {}): Sound | null {
   const AC = (win as unknown as { AudioContext?: AudioCtor; webkitAudioContext?: AudioCtor }).AudioContext ??
     (win as unknown as { webkitAudioContext?: AudioCtor }).webkitAudioContext;
   if (!AC) return null;
@@ -65,7 +69,7 @@ export function sound(win: Window): Sound | null {
     return null;
   }
 
-  let mute = readMute(win);
+  let mute = remember && readMute(win);
   const out = ac.createGain();
   out.gain.value = mute ? 0 : VOLUME;
   out.connect(ac.destination);
@@ -197,10 +201,12 @@ export function sound(win: Window): Sound | null {
         // a sound that fails must never stop the invitation
       }
     },
+    ac,
+    bus: out,
     muted: () => mute,
     toggle() {
       mute = !mute;
-      saveMute(win, mute);
+      if (remember) saveMute(win, mute);
       out.gain.setTargetAtTime(mute ? 0 : VOLUME, ac.currentTime, 0.02);
       return mute;
     },

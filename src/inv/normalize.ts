@@ -1,5 +1,5 @@
 import { safePhotoUrl } from './sanitize';
-import { EVENT_KINDS, LIMITS, TEMPLATE_IDS, type Invitation, type Moment } from './types';
+import { EVENT_KINDS, LIMITS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from './types';
 
 /**
  * A decoded link is untrusted JSON. Whatever shape arrives, what leaves here is
@@ -69,5 +69,6 @@ export function normalizeInvitation(raw: unknown): Invitation {
     note: str(o.note, LIMITS.note),
     title: str(o.title, LIMITS.title),
     snacks: str(o.snacks, LIMITS.snacks),
+    music: oneOf<MusicId | ''>(o.music, MUSIC_IDS, ''),
   };
 }

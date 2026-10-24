@@ -1,8 +1,9 @@
 import { googleCalendarUrl, icsFile } from './calendar';
 import { rsvpUrl } from './rsvp';
 import { petals } from './scenes';
+import { music, musicOff, setMusicOff, type Music } from './music';
 import { sound, type Sound } from './sound';
-import type { Invitation } from './types';
+import type { Invitation, MusicId } from './types';
 
 export interface WireOpts {
   /** The link the calendar entry points back to. */
@@ -79,35 +80,69 @@ export function wire(doc: Document, inv: Invitation, o: WireOpts): void {
   };
   taps.forEach((el) => el.addEventListener('click', () => tap(el)));
 
+  // Background music: started by the opening tap, with its own button on the page.
+  const musicBtn = doc.querySelector<HTMLElement>('[data-music]');
+  const sndBtn = stage?.querySelector<HTMLElement>('[data-snd]') ?? null;
+  let tune: Music | null = null;
+  const mark = () => {
+    if (!snd) return;
+    const off = snd.muted();
+    sndBtn?.setAttribute('aria-pressed', String(off));
+    sndBtn?.setAttribute('aria-label', off ? 'Pornește sunetul' : 'Fără sunet');
+    const on = !!tune?.playing() && !off;
+    musicBtn?.setAttribute('aria-pressed', String(on));
+    musicBtn?.setAttribute('aria-label', on ? 'Oprește muzica' : 'Pornește muzica');
+  };
+  const startMusic = (w: Window, s: Sound, id: MusicId) => {
+    tune = music(s, w, id);
+    if (!musicOff(w) && !s.muted()) tune.start();
+    if (musicBtn) {
+      musicBtn.hidden = false;
+      musicBtn.addEventListener('click', () => {
+        if (!tune) return;
+        if (tune.playing() && !s.muted()) {
+          tune.stop();
+          setMusicOff(w, true);
+        } else {
+          if (s.muted()) s.toggle();
+          tune.start();
+          setMusicOff(w, false);
+        }
+        mark();
+      });
+    }
+    // A phone in a pocket should not keep playing to nobody.
+    doc.addEventListener('visibilitychange', () => {
+      if (doc.hidden) void s.ac.suspend?.();
+      else if (tune?.playing()) void s.ac.resume?.();
+    });
+  };
+
   const open = () => {
     root.classList.remove('is-sealed');
     root.classList.add('is-open');
     buzz(35);
     const env = doc.querySelector<HTMLElement>('[data-env]');
     if (env) win?.setTimeout(() => env.remove(), 1800);
-    if (!stage || reduced || !win) {
+    const plays = !!stage && !reduced && !!win;
+    // Audio may only start inside the guest's tap, which is where we are.
+    if (win && (plays || inv.music)) snd = sound(win);
+    if (!snd) sndBtn?.remove();
+    else {
+      if (inv.music && win) startMusic(win, snd, inv.music);
+      sndBtn?.addEventListener('click', () => {
+        snd!.toggle();
+        mark();
+      });
+      mark();
+    }
+    if (!stage || !plays || !win) {
       stage?.remove();
       canvas?.remove();
       show();
       return;
     }
     root.classList.add('is-playing');
-    // Audio may only start inside the guest's tap, which is where we are.
-    snd = sound(win);
-    const btn = stage.querySelector<HTMLElement>('[data-snd]');
-    if (!snd) btn?.remove();
-    else if (btn) {
-      const mark = () => {
-        const off = snd!.muted();
-        btn.setAttribute('aria-pressed', String(off));
-        btn.setAttribute('aria-label', off ? 'Pornește sunetul' : 'Fără sunet');
-      };
-      mark();
-      btn.addEventListener('click', () => {
-        snd!.toggle();
-        mark();
-      });
-    }
     for (const cue of (stage.dataset.cues ?? '').split(',').filter(Boolean)) {
       const [name, at] = cue.split('@');
       later(() => snd?.play(name), Number(at) || 0);

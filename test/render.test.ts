@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderBody, renderCss, renderDocument, mapHref } from '../src/inv/render';
 import { wire } from '../src/inv/wire';
 import { SAMPLE, SAMPLE_FILM } from '../src/inv/defaults';
-import { EVENT_KINDS, TEMPLATE_IDS, type Invitation } from '../src/inv/types';
+import { EVENT_KINDS, MUSIC_IDS, TEMPLATE_IDS, type Invitation } from '../src/inv/types';
+import { chord, tuneLength, tuneNotes } from '../src/inv/music';
+import { starter } from '../src/inv/defaults';
+import { normalizeInvitation } from '../src/inv/normalize';
 import { AUTO_MS, SCENE_MS, splitNames } from '../src/inv/scenes';
 import { sound } from '../src/inv/sound';
 
@@ -128,6 +131,73 @@ describe('wire', () => {
     expect((doc.querySelector('[data-gcal]') as HTMLAnchorElement).href).toContain('calendar.google.com');
   });
 });
+
+/** Just enough Web Audio to count what gets scheduled. */
+function fakeAudio() {
+  const made = { osc: 0, gains: 0 };
+  const param = () => ({
+    value: 0,
+    setValueAtTime() {},
+    exponentialRampToValueAtTime() {},
+    linearRampToValueAtTime() {},
+    setTargetAtTime() {},
+    cancelScheduledValues() {},
+  });
+  const node = () => ({ connect: (n: unknown) => n, gain: param(), frequency: param(), Q: param() });
+  class AC {
+    currentTime = 0;
+    sampleRate = 8000;
+    state = 'running';
+    destination = {};
+    resume() {
+      return Promise.resolve();
+    }
+    suspend() {
+      return Promise.resolve();
+    }
+    createGain() {
+      made.gains++;
+      return node();
+    }
+    createBiquadFilter() {
+      return { ...node(), type: '' };
+    }
+    createConvolver() {
+      return { ...node(), buffer: null };
+    }
+    createOscillator() {
+      made.osc++;
+      return { ...node(), type: '', start() {}, stop() {} };
+    }
+    createBuffer(_c: number, n: number) {
+      const d = new Float32Array(n);
+      return { getChannelData: () => d };
+    }
+    createBufferSource() {
+      return { ...node(), buffer: null, loop: false, start() {}, stop() {} };
+    }
+  }
+  return { AC, made };
+}
+
+function fakeWindow() {
+  const { AC, made } = fakeAudio();
+  const store = new Map<string, string>();
+  const win = {
+    AudioContext: AC,
+    navigator: {},
+    setInterval: () => 1,
+    clearInterval() {},
+    setTimeout: () => 1,
+    clearTimeout() {},
+    localStorage: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    },
+  } as unknown as Window;
+  return { win, made, store };
+}
 
 // jsdom has no canvas; the petals must bow out quietly instead of failing.
 HTMLCanvasElement.prototype.getContext = (() => null) as never;
@@ -356,50 +426,6 @@ describe('civil wedding names', () => {
 });
 
 describe('sound', () => {
-  /** Just enough Web Audio to count what gets scheduled. */
-  function fakeWindow() {
-    const made = { osc: 0, gains: 0 };
-    const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {}, setTargetAtTime() {} });
-    const node = () => ({ connect: (n: unknown) => n, gain: param(), frequency: param(), Q: param() });
-    class AC {
-      currentTime = 0;
-      sampleRate = 8000;
-      state = 'running';
-      destination = {};
-      resume() {
-        return Promise.resolve();
-      }
-      createGain() {
-        made.gains++;
-        return node();
-      }
-      createBiquadFilter() {
-        return { ...node(), type: '' };
-      }
-      createOscillator() {
-        made.osc++;
-        return { ...node(), type: '', start() {}, stop() {} };
-      }
-      createBuffer(_c: number, n: number) {
-        const d = new Float32Array(n);
-        return { getChannelData: () => d };
-      }
-      createBufferSource() {
-        return { ...node(), buffer: null, loop: false, start() {}, stop() {} };
-      }
-    }
-    const store = new Map<string, string>();
-    const win = {
-      AudioContext: AC,
-      navigator: {},
-      localStorage: {
-        getItem: (k: string) => store.get(k) ?? null,
-        setItem: (k: string, v: string) => void store.set(k, v),
-        removeItem: (k: string) => void store.delete(k),
-      },
-    } as unknown as Window;
-    return { win, made, store };
-  }
 
   it('plays every effect the scenes ask for', () => {
     const { win, made } = fakeWindow();
@@ -435,6 +461,119 @@ describe('sound', () => {
 
   it('no Web Audio, no sound object', () => {
     expect(sound({ navigator: {} } as unknown as Window)).toBeNull();
+  });
+
+  it('the editor can listen without touching the guest mute', () => {
+    const { win, store } = fakeWindow();
+    store.set('invitlite-sunet', 'off');
+    const s = sound(win, { remember: false })!;
+    expect(s.muted()).toBe(false);
+    s.toggle();
+    expect(store.get('invitlite-sunet')).toBe('off');
+  });
+});
+
+describe('background music', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    delete (window as { AudioContext?: unknown }).AudioContext;
+    localStorage.clear();
+  });
+
+  it('every tune is well formed: notes inside their bar, in a playable range', () => {
+    for (const id of MUSIC_IDS) {
+      const { bars, beats, bpm } = tuneLength(id);
+      const notes = tuneNotes(id);
+      expect(bpm).toBeGreaterThan(50);
+      expect(new Set(notes.map((x) => x.bar)).size, id).toBe(bars);
+      for (const { note } of notes) {
+        expect(note.at, id).toBeGreaterThanOrEqual(0);
+        expect(note.at, id).toBeLessThan(beats);
+        expect(note.dur, id).toBeGreaterThan(0);
+        expect(note.midi, id).toBeGreaterThanOrEqual(0);
+        expect(note.midi, id).toBeLessThanOrEqual(96);
+        expect(Number.isFinite(note.vel) && note.vel > 0 && note.vel <= 1, id).toBe(true);
+      }
+    }
+  });
+
+  it('reads chord names', () => {
+    expect(chord('Bbmaj7')).toEqual({ pc: 10, iv: [0, 4, 7, 11] });
+    expect(chord('Dm')).toEqual({ pc: 2, iv: [0, 3, 7] });
+    expect(chord('F7').iv).toEqual([0, 4, 7, 10]);
+  });
+
+  it('each kind starts with its own tune; old links stay quiet', () => {
+    expect(starter('nunta').music).toBe('vals');
+    expect(starter('film').music).toBe('jazz');
+    const { music: _m, ...old } = SAMPLE;
+    expect(normalizeInvitation(old).music).toBe('');
+    expect(normalizeInvitation({ ...SAMPLE, music: 'rock' }).music).toBe('');
+  });
+
+  it('the music switch is on the invitation, never in the editor preview', () => {
+    expect(renderBody(SAMPLE, o)).toContain('data-music');
+    expect(renderBody(SAMPLE, { ...o, envelope: false })).not.toContain('data-music');
+    expect(renderBody({ ...SAMPLE, music: '' }, o)).not.toContain('data-music');
+  });
+
+  it('starts on the opening tap, and the guest can stop it for good', () => {
+    vi.useFakeTimers();
+    const { AC, made } = fakeAudio();
+    (window as unknown as { AudioContext: unknown }).AudioContext = AC;
+    const doc = live(SAMPLE);
+    wire(doc, SAMPLE, { link: 'L', go: () => {} });
+    const btn = doc.querySelector('[data-music]') as HTMLButtonElement;
+    expect(btn.hidden).toBe(true);
+    const before = made.osc;
+    (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+    expect(made.osc).toBeGreaterThan(before);
+    expect(btn.hidden).toBe(false);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    btn.click();
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    expect(localStorage.getItem('invitlite-muzica')).toBe('off');
+    btn.click();
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(localStorage.getItem('invitlite-muzica')).toBeNull();
+  });
+
+  it('a guest who switched it off once is not surprised next time', () => {
+    vi.useFakeTimers();
+    localStorage.setItem('invitlite-muzica', 'off');
+    const { AC } = fakeAudio();
+    (window as unknown as { AudioContext: unknown }).AudioContext = AC;
+    const doc = live(SAMPLE);
+    wire(doc, SAMPLE, { link: 'L', go: () => {} });
+    (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+    expect(doc.querySelector('[data-music]')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('muting the scene silences the music too', () => {
+    vi.useFakeTimers();
+    const { AC } = fakeAudio();
+    (window as unknown as { AudioContext: unknown }).AudioContext = AC;
+    const doc = live(SAMPLE);
+    wire(doc, SAMPLE, { link: 'L', go: () => {} });
+    (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+    (doc.querySelector('[data-snd]') as HTMLButtonElement).click();
+    expect(doc.querySelector('[data-music]')?.getAttribute('aria-pressed')).toBe('false');
+    // turning the music back on brings the sound back
+    (doc.querySelector('[data-music]') as HTMLButtonElement).click();
+    expect(doc.querySelector('[data-music]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(localStorage.getItem('invitlite-sunet')).toBeNull();
+  });
+
+  it('plays even when reduced motion skips the scene', () => {
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: (q: string) => ({ matches: q.includes('reduce') }) });
+    const { AC, made } = fakeAudio();
+    (window as unknown as { AudioContext: unknown }).AudioContext = AC;
+    const doc = live(SAMPLE);
+    wire(doc, SAMPLE, { link: 'L', go: () => {} });
+    (doc.querySelector('[data-open]') as HTMLButtonElement).click();
+    expect(doc.documentElement.classList.contains('is-shown')).toBe(true);
+    expect(made.osc).toBeGreaterThan(0);
+    delete (window as { matchMedia?: unknown }).matchMedia;
   });
 });
 
