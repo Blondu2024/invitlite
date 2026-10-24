@@ -667,3 +667,17 @@ describe('motifs and photo', () => {
     expect(doc.querySelector('.motif')).not.toBeNull();
   });
 });
+
+describe('landing samples', () => {
+  it('every kind has an example that survives the link and opens with its own scene', async () => {
+    const { sampleFor } = await import('../src/inv/defaults');
+    const { invitationHash, openHash } = await import('../src/inv/link');
+    for (const k of EVENT_KINDS) {
+      const inv = sampleFor(k);
+      expect(inv.kind).toBe(k);
+      expect(inv.music).not.toBe('');
+      expect(openHash(invitationHash(inv, ''))?.inv).toEqual(normalizeInvitation(inv));
+      expect(mount(inv).querySelector('.st')).not.toBeNull();
+    }
+  });
+});

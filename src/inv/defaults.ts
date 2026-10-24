@@ -114,6 +114,31 @@ export const SAMPLE: Invitation = {
   music: 'vals',
 };
 
+/** One example per kind, for the landing page and the phone-check links. Fictional people. */
+export function sampleFor(kind: EventKind): Invitation {
+  if (kind === 'nunta') return SAMPLE;
+  if (kind === 'film') return SAMPLE_FILM;
+  const base: Invitation = {
+    ...SAMPLE,
+    kind,
+    intro: STARTERS[kind].intro,
+    message: STARTERS[kind].message,
+    music: STARTERS[kind].music,
+    askKids: STARTERS[kind].askKids,
+    askMenu: STARTERS[kind].askMenu,
+  };
+  switch (kind) {
+    case 'botez':
+      return { ...base, template: 'botanic', hosts: 'Sofia Maria' };
+    case 'cununie':
+      return { ...base, hosts: 'Ana & Mihai', parents: '', godparents: '', moments: [m('Cununia civilă', '13:00', 'Primăria Galați', 'Strada Domnească 38, Galați')] };
+    case 'aniversare':
+      return { ...base, template: 'seara', hosts: 'Bunicul Ion, 70 de ani', parents: '', godparents: '', moments: [m('Petrecerea', '19:00', 'Restaurantul de la malul Dunării', 'Faleza Dunării, Galați')] };
+    default:
+      return { ...base, hosts: 'Matei, 4 ani', parents: '', godparents: '', moments: [m('Petrecerea', '16:00', 'Locul de joacă Arca', 'Galați')] };
+  }
+}
+
 /** The film-night example. Fictional people, an invented title. */
 export const SAMPLE_FILM: Invitation = {
   ...SAMPLE,
