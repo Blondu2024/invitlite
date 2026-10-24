@@ -1,4 +1,4 @@
-import type { TemplateId } from './types';
+import type { FontId, Invitation, TemplateId, TintId } from './types';
 
 /**
  * Three art directions. Each one changes the display face, the palette and the
@@ -61,6 +61,45 @@ export const THEMES: Record<TemplateId, Theme> = {
   },
 };
 
+/**
+ * Colours a host can lay over any style. On the light styles they recolour the
+ * accent and the full-bleed sections; on Seară (dark paper) the lighter `night`
+ * tone does both, so text keeps its contrast.
+ */
+export const TINTS: Record<TintId, { label: string; accent: string; deep: string; night: string }> = {
+  vin: { label: 'Roșu de vin', accent: '#7A2E2E', deep: '#6B2626', night: '#E3AEA6' },
+  salvie: { label: 'Verde salvie', accent: '#4F6B4A', deep: '#2F4A35', night: '#BCD0AB' },
+  albastru: { label: 'Albastru', accent: '#2E4A7A', deep: '#1F3358', night: '#AFC4E8' },
+  roz: { label: 'Roz pudrat', accent: '#A8505E', deep: '#8E4652', night: '#EDBAC0' },
+  auriu: { label: 'Auriu', accent: '#8C6220', deep: '#6E4C17', night: '#D9BE86' },
+  teracota: { label: 'Teracotă', accent: '#A44B2A', deep: '#8A3E22', night: '#E9A88A' },
+  lavanda: { label: 'Lavandă', accent: '#65538A', deep: '#4E3F6B', night: '#C9BBE6' },
+};
+
+/** Display faces, all self-hosted with Romanian letters (ș, ț). */
+export const FONTS: Record<FontId, { label: string; stack: string }> = {
+  cormorant: { label: 'Cormorant', stack: "'Cormorant Garamond Variable', 'Cormorant Garamond', Georgia, serif" },
+  instrument: { label: 'Instrument', stack: "'Instrument Serif', Georgia, serif" },
+  bodoni: { label: 'Bodoni', stack: "'Bodoni Moda Variable', 'Bodoni Moda', Didot, serif" },
+  playfair: { label: 'Playfair', stack: "'Playfair Display Variable', 'Playfair Display', Georgia, serif" },
+  vibes: { label: 'Caligrafic', stack: "'Great Vibes', 'Snell Roundhand', cursive" },
+  fraunces: { label: 'Fraunces', stack: "'Fraunces Variable', 'Fraunces', Georgia, serif" },
+  baloo: { label: 'Rotunjit', stack: "'Baloo 2 Variable', 'Baloo 2', 'Trebuchet MS', sans-serif" },
+};
+
+/** The style with the host's colour and face laid over it. */
+export function themeFor(inv: Pick<Invitation, 'template' | 'tint' | 'font'>): Theme {
+  const t = THEMES[inv.template] ?? THEMES.clasic;
+  const tint = inv.tint ? TINTS[inv.tint] : null;
+  const font = inv.font ? FONTS[inv.font] : null;
+  const night = t.id === 'seara';
+  return {
+    ...t,
+    ...(tint ? (night ? { accent: tint.night, deep: tint.night } : { accent: tint.accent, deep: tint.deep }) : {}),
+    ...(font ? { display: font.stack } : {}),
+  };
+}
+
 export function fontFaces(base: string): string {
   const f = (family: string, file: string, style: string, weight: string, range: string) =>
     `@font-face{font-family:'${family}';font-style:${style};font-display:swap;font-weight:${weight};` +
@@ -79,6 +118,18 @@ export function fontFaces(base: string): string {
     for (const style of ['normal', 'italic']) {
       out.push(f(family, `${file}-latin-wght-${style}.woff2`, style, w, LATIN));
       out.push(f(family, `${file}-latin-ext-wght-${style}.woff2`, style, w, EXT));
+    }
+  }
+  const extra: [string, string, string, string[]][] = [
+    ['Playfair Display Variable', 'playfair', '400 900', ['normal', 'italic']],
+    ['Fraunces Variable', 'fraunces', '300 900', ['normal', 'italic']],
+    ['Great Vibes', 'vibes', '400', ['normal']],
+    ['Baloo 2 Variable', 'baloo', '400 800', ['normal']],
+  ];
+  for (const [family, file, w, styles] of extra) {
+    for (const style of styles) {
+      out.push(f(family, `${file}-latin-${style}.woff2`, style, w, LATIN));
+      out.push(f(family, `${file}-latin-ext-${style}.woff2`, style, w, EXT));
     }
   }
   for (const style of ['normal', 'italic']) {

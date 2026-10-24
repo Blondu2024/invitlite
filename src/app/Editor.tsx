@@ -3,10 +3,11 @@ import { music, MUSIC_LABEL, type Music } from '../inv/music';
 import { sound, type Sound } from '../inv/sound';
 import { starter } from '../inv/defaults';
 import { CATEGORIES, KINDS, kindsIn } from '../inv/kinds';
-import { THEMES } from '../inv/theme';
+import { FONTS, fontFaces, THEMES, TINTS } from '../inv/theme';
+import { stockPhoto } from '../inv/render';
 import { waNumber } from '../inv/rsvp';
 import { photoLinkHint, safePhotoUrl } from '../inv/sanitize';
-import { LIMITS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from '../inv/types';
+import { FONT_IDS, LIMITS, PICS, TINT_IDS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from '../inv/types';
 import { invitationUrl } from '../inv/link';
 import { initialInvitation, persist } from './store';
 import { Preview } from './Preview';
@@ -133,6 +134,74 @@ function PhotoField({ value, onChange }: { value: string; onChange: (v: string) 
         <p>Poza nu intră în link, doar adresa ei. Așa linkul rămâne scurt și codul QR mic. Dacă ștergi poza de pe postimages, invitația rămâne, doar fără poză.</p>
       </details>
     </div>
+  );
+}
+
+/** The photograph, the colour and the face: one invitation, many versions. */
+function LookField({ inv, set }: { inv: Invitation; set: <K extends keyof Invitation>(k: K) => (v: Invitation[K]) => void }) {
+  // the face buttons are written in their own face, so the editor needs them too
+  useEffect(() => {
+    if (document.getElementById('look-fonts')) return;
+    const st = document.createElement('style');
+    st.id = 'look-fonts';
+    st.textContent = fontFaces(location.origin);
+    document.head.append(st);
+  }, []);
+  const night = inv.template === 'seara';
+  const base = THEMES[inv.template];
+  const sample = inv.hosts.trim() || KINDS[inv.kind].hint;
+  return (
+    <>
+      <div className="grp">
+        <h2 className="grp-t">Fotografia</h2>
+        <div className="pics" role="radiogroup" aria-label="Fotografia">
+          {Array.from({ length: PICS }, (_, i) => (
+            <button
+              key={`${inv.kind}-${i}`}
+              type="button"
+              role="radio"
+              aria-checked={inv.pic === i}
+              aria-label={`Fotografia ${i + 1}`}
+              className={inv.pic === i ? 'pic on' : 'pic'}
+              onClick={() => set('pic')(i)}
+            >
+              <img src={stockPhoto(inv.kind, '', 'p', i)} alt="" loading="lazy" decoding="async" />
+            </button>
+          ))}
+        </div>
+        <p className="f-h">{inv.photo ? 'Acum se vede poza voastră. Golește câmpul „Poza voastră" de mai jos ca să folosești una de aici.' : 'Cinci fotografii alese pentru acest tip. Poți pune și poza voastră, mai jos.'}</p>
+      </div>
+
+      <div className="grp">
+        <h2 className="grp-t">Culoarea</h2>
+        <div className="tints" role="radiogroup" aria-label="Culoarea">
+          {(['', ...TINT_IDS] as const).map((id) => {
+            const c = id ? (night ? TINTS[id].night : TINTS[id].deep) : base.deep;
+            const label = id ? TINTS[id].label : 'A stilului';
+            return (
+              <button key={id || 'base'} type="button" role="radio" aria-checked={inv.tint === id} aria-label={label} title={label} className={inv.tint === id ? 'tint on' : 'tint'} onClick={() => set('tint')(id)}>
+                <span style={{ background: c }} />
+              </button>
+            );
+          })}
+        </div>
+        <p className="f-h">{inv.tint ? TINTS[inv.tint].label : `A stilului ${base.label}`}. Colorează titlurile mici, confirmarea și citatul.</p>
+      </div>
+
+      <div className="grp">
+        <h2 className="grp-t">Scrisul</h2>
+        <div className="fonts" role="radiogroup" aria-label="Fontul numelor">
+          {(['', ...FONT_IDS] as const).map((id) => (
+            <button key={id || 'base'} type="button" role="radio" aria-checked={inv.font === id} className={inv.font === id ? 'font on' : 'font'} onClick={() => set('font')(id)}>
+              <span className="font-s" style={{ fontFamily: id ? FONTS[id].stack : base.display }}>
+                {sample}
+              </span>
+              <span className="font-n">{id ? FONTS[id].label : 'Al stilului'}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -301,6 +370,8 @@ export function Editor() {
               })}
             </div>
           </div>
+
+          <LookField inv={inv} set={set} />
 
           <MusicField value={inv.music} onChange={set('music')} />
 

@@ -16,6 +16,17 @@ export const EVENT_KINDS: EventKind[] = [
 ];
 export const TEMPLATE_IDS: TemplateId[] = ['clasic', 'botanic', 'seara'];
 
+/** How many stock photographs each kind ships with. */
+export const PICS = 5;
+
+/** Accent colours laid over a style. '' keeps the style's own. */
+export type TintId = 'vin' | 'salvie' | 'albastru' | 'roz' | 'auriu' | 'teracota' | 'lavanda';
+export const TINT_IDS: TintId[] = ['vin', 'salvie', 'albastru', 'roz', 'auriu', 'teracota', 'lavanda'];
+
+/** Display faces for names and headings. '' keeps the style's own. */
+export type FontId = 'cormorant' | 'instrument' | 'bodoni' | 'playfair' | 'vibes' | 'fraunces' | 'baloo';
+export const FONT_IDS: FontId[] = ['cormorant', 'instrument', 'bodoni', 'playfair', 'vibes', 'fraunces', 'baloo'];
+
 /** Background tunes, composed for this project and played by the browser itself. */
 export type MusicId = 'vals' | 'cutie' | 'pian' | 'petrecere' | 'jazz';
 export const MUSIC_IDS: MusicId[] = ['vals', 'cutie', 'pian', 'petrecere', 'jazz'];
@@ -61,6 +72,10 @@ export interface Invitation {
   snacks: string;
   /** Background music, '' for none. Starts only when the guest opens the invitation. */
   music: MusicId | '';
+  /** Which of the kind's stock photographs, 0 to PICS-1. Ignored when `photo` is set. */
+  pic: number;
+  tint: TintId | '';
+  font: FontId | '';
 }
 
 export const LIMITS = {

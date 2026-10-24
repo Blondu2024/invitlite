@@ -41,6 +41,10 @@ export function starter(kind: EventKind, prev?: Invitation): Invitation {
     note: prev?.note ?? '',
     title: prev?.title ?? '',
     snacks: prev?.snacks ?? '',
+    // a new kind has other photographs; the colour and the face carry over
+    pic: 0,
+    tint: prev?.tint ?? '',
+    font: prev?.font ?? '',
   };
 }
 
@@ -69,6 +73,9 @@ export const SAMPLE: Invitation = {
   title: '',
   snacks: '',
   music: 'vals',
+  pic: 0,
+  tint: '',
+  font: '',
 };
 
 /** One example per kind, for the landing page and the phone-check links. Fictional people. */

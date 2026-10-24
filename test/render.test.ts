@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderBody, renderCss, renderDocument, mapHref } from '../src/inv/render';
+import { renderBody, renderCss, renderDocument, mapHref, stockPhoto } from '../src/inv/render';
 import { wire } from '../src/inv/wire';
 import { SAMPLE, SAMPLE_FILM } from '../src/inv/defaults';
-import { EVENT_KINDS, MUSIC_IDS, TEMPLATE_IDS, type Invitation } from '../src/inv/types';
+import { EVENT_KINDS, FONT_IDS, MUSIC_IDS, PICS, TEMPLATE_IDS, TINT_IDS, type Invitation } from '../src/inv/types';
+import { FONTS, TINTS, themeFor } from '../src/inv/theme';
 import { chord, tuneLength, tuneNotes } from '../src/inv/music';
 import { starter } from '../src/inv/defaults';
 import { normalizeInvitation } from '../src/inv/normalize';
@@ -666,7 +667,12 @@ describe('motifs and photo', () => {
 
   it('every photograph the invitations point at ships with the site', async () => {
     const { existsSync } = await import('node:fs');
-    for (const k of EVENT_KINDS) for (const s of ['p', 'l']) expect(existsSync(`public/img/bg/${k}-${s}.webp`), `${k}-${s}`).toBe(true);
+    for (const k of EVENT_KINDS)
+      for (let i = 0; i < PICS; i++)
+        for (const s of ['p', 'l'] as const) {
+          const file = `public${stockPhoto(k, '', s, i)}`;
+          expect(existsSync(file), file).toBe(true);
+        }
   });
 
   it('a photo that fails to load disappears and takes its frame with it', () => {
@@ -720,5 +726,50 @@ describe('occasions borrowing a scene', () => {
 
   it('the civil wedding still stamps DA', () => {
     expect(view({ ...SAMPLE, kind: 'cununie' })).toContain('>DA</text>');
+  });
+});
+
+describe('one invitation, many versions', () => {
+  it('the chosen photograph shows on the envelope and in the hero', () => {
+    const inv = { ...SAMPLE, pic: 3 };
+    const html = renderBody(inv, o);
+    expect(html).toContain('/img/bg/nunta-3-p.webp');
+    expect(html).toContain('/img/bg/nunta-3-l.webp');
+    expect(html).not.toContain('/img/bg/nunta-p.webp');
+    // the host's own photo still wins
+    expect(renderBody({ ...inv, photo: 'https://i.postimg.cc/x/a.jpg' }, o)).not.toContain('nunta-3-p');
+  });
+
+  it('a colour recolours the accent; on Seară it uses the light tone', () => {
+    for (const id of TINT_IDS) {
+      expect(themeFor({ template: 'clasic', tint: id, font: '' }).accent).toBe(TINTS[id].accent);
+      expect(themeFor({ template: 'seara', tint: id, font: '' }).deep).toBe(TINTS[id].night);
+      expect(renderCss({ ...SAMPLE, tint: id }, o)).toContain(`--accent:${TINTS[id].accent}`);
+    }
+    expect(themeFor({ template: 'botanic', tint: '', font: '' }).accent).toBe('#9A6B22');
+  });
+
+  it('every face is declared and self-hosted', async () => {
+    const { existsSync } = await import('node:fs');
+    for (const id of FONT_IDS) {
+      const css = renderCss({ ...SAMPLE, font: id }, o);
+      expect(css).toContain(`--display:${FONTS[id].stack}`);
+      const family = /'([^']+)'/.exec(FONTS[id].stack)![1];
+      expect(css, id).toContain(`font-family:'${family}'`);
+    }
+    for (const m of renderCss(SAMPLE, o).matchAll(/fonts\/([\w.-]+\.woff2)/g)) expect(existsSync(`public/fonts/${m[1]}`), m[1]).toBe(true);
+  });
+
+  it('switching kind starts from its first photograph and keeps colour and face', () => {
+    const s = starter('botez', { ...SAMPLE, pic: 4, tint: 'lavanda', font: 'vibes' });
+    expect([s.pic, s.tint, s.font]).toEqual([0, 'lavanda', 'vibes']);
+  });
+
+  it('old links read as before; nonsense falls back', () => {
+    const { pic, tint, font, ...old } = SAMPLE;
+    expect(normalizeInvitation(old)).toMatchObject({ pic: 0, tint: '', font: '' });
+    expect(normalizeInvitation({ ...SAMPLE, pic: 9, tint: 'neon', font: 'comic' })).toMatchObject({ pic: 0, tint: '', font: '' });
+    expect(normalizeInvitation({ ...SAMPLE, pic: 2.5 }).pic).toBe(0);
+    void [pic, tint, font];
   });
 });

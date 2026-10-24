@@ -1,6 +1,6 @@
 import { daysUntil, dottedDate, hashName, initials, KIND_LABEL, longDate, roCount, seatFor, shortDate } from './format';
 import { escHtml, safeHref } from './sanitize';
-import { fontFaces, THEMES, type Theme } from './theme';
+import { fontFaces, themeFor, type Theme } from './theme';
 import { waNumber } from './rsvp';
 import { mainMotif, smallMotif } from './motifs';
 import { curtain, sceneCss, stage } from './scenes';
@@ -66,16 +66,16 @@ function barcode(seed: number): string {
  * own photograph, served next to the fonts, so nobody gets a drawing instead.
  * `wide` swaps to the landscape crop on landscape screens.
  */
-export function stockPhoto(kind: Invitation['kind'], base: string, shape: 'p' | 'l'): string {
-  return `${base}/img/bg/${kind}-${shape}.webp`;
+export function stockPhoto(kind: Invitation['kind'], base: string, shape: 'p' | 'l', pic = 0): string {
+  return `${base}/img/bg/${kind}${pic ? `-${pic}` : ''}-${shape}.webp`;
 }
 
 function photoTag(inv: Invitation, o: RenderOpts, wide = false): string {
   const attrs = 'alt="" decoding="async" data-photo';
   if (inv.photo) return `<img src="${escHtml(inv.photo)}" ${attrs} referrerpolicy="no-referrer">`;
-  const p = escHtml(stockPhoto(inv.kind, o.base, 'p'));
+  const p = escHtml(stockPhoto(inv.kind, o.base, 'p', inv.pic));
   if (!wide) return `<img src="${p}" ${attrs}>`;
-  return `<picture><source media="(orientation:landscape)" srcset="${escHtml(stockPhoto(inv.kind, o.base, 'l'))}"><img src="${p}" ${attrs}></picture>`;
+  return `<picture><source media="(orientation:landscape)" srcset="${escHtml(stockPhoto(inv.kind, o.base, 'l', inv.pic))}"><img src="${p}" ${attrs}></picture>`;
 }
 
 /** Film night: the invitation is a cinema ticket with the guest's name and seat. */
@@ -87,7 +87,7 @@ function ticketHero(inv: Invitation, o: RenderOpts): string {
   const cell = (k: string, v: string) => (v ? `<div><dt>${k}</dt><dd>${escHtml(v)}</dd></div>` : '');
   const guest = o.guest ? `<p class="h-guest rv" style="--i:0">Dragă ${escHtml(o.guest)},</p>` : '';
   const intro = inv.intro ? `<p class="h-intro rv" style="--i:2">${escHtml(inv.intro)}</p>` : '';
-  const img = `<figure class="h-photo film-ph rv" style="--i:3" data-photo-box>${inv.photo ? photoTag(inv, o) : `<img src="${escHtml(stockPhoto('film', o.base, 'l'))}" alt="" decoding="async" data-photo>`}</figure>`;
+  const img = `<figure class="h-photo film-ph rv" style="--i:3" data-photo-box>${inv.photo ? photoTag(inv, o) : `<img src="${escHtml(stockPhoto('film', o.base, 'l', inv.pic))}" alt="" decoding="async" data-photo>`}</figure>`;
   const count = countdownText(inv, o.today);
   return `<header class="hero hero-tk">${guest}
 <div class="tk rv" style="--i:1">
@@ -216,7 +216,7 @@ function envelope(inv: Invitation, t: Theme, o: RenderOpts): string {
 
 function envelopeOnly(inv: Invitation, t: Theme, o: RenderOpts): string {
   const to = o.guest ? `Pentru ${escHtml(o.guest)}` : 'O invitație pentru tine';
-  const bg = (shape: 'p' | 'l') => `url('${escHtml(inv.photo && shape === 'p' ? inv.photo : stockPhoto(inv.kind, o.base, shape))}')`;
+  const bg = (shape: 'p' | 'l') => `url('${escHtml(inv.photo && shape === 'p' ? inv.photo : stockPhoto(inv.kind, o.base, shape, inv.pic))}')`;
   const land = inv.photo ? bg('p') : bg('l');
   return `<div class="env${t.id === 'seara' ? ' env-night' : ''}" data-env>
 <div class="env-bg" style="--bp:${bg('p')};--bl:${land}" aria-hidden="true"></div>
@@ -227,7 +227,7 @@ function envelopeOnly(inv: Invitation, t: Theme, o: RenderOpts): string {
 }
 
 export function renderBody(inv: Invitation, o: RenderOpts): string {
-  const t = THEMES[inv.template] ?? THEMES.clasic;
+  const t = themeFor(inv);
   const message = inv.message
     ? `<section class="sec deep msg rv">${smallMotif(inv.kind)}${prose(inv.message, 'msg-p')}</section>`
     : `<div class="orn-solo rv">${smallMotif(inv.kind)}</div>`;
@@ -246,14 +246,14 @@ export function renderBody(inv: Invitation, o: RenderOpts): string {
     inv.music && o.envelope
       ? `<button class="mus" type="button" data-music hidden aria-pressed="false" aria-label="Pornește muzica"><span class="mus-eq" aria-hidden="true"><i></i><i></i><i></i></span><span>Muzică</span></button>`
       : '';
-  return `${envelope(inv, t, o)}${tune}<main class="inv t-${t.id} k-${inv.kind}">
+  return `${envelope(inv, t, o)}${tune}<main class="inv t-${t.id} k-${inv.kind}${inv.font ? ` f-${inv.font}` : ''}">
 ${hero(inv, t, o)}${message}${family(inv)}${program(inv)}${snacks}${note}${rsvp(inv, o)}${cal}
 <footer class="badge"><a href="${escHtml(o.base)}/" target="_blank" rel="noopener">Invitație făcută gratuit cu <b>INVITLITE</b>. Fă-o și pe a ta</a></footer>
 </main>`;
 }
 
 export function renderCss(inv: Invitation, o: RenderOpts): string {
-  const t = THEMES[inv.template] ?? THEMES.clasic;
+  const t = themeFor(inv);
   return `${fontFaces(o.base)}
 :root{--paper:${t.paper};--ink:${t.ink};--muted:${t.muted};--accent:${t.accent};--deep:${t.deep};--on-deep:${t.onDeep};--line:${t.line};
 --display:${t.display};--body:'Jost Variable','Jost',system-ui,sans-serif;--pad:clamp(72px,12vw,144px);--gut:clamp(20px,6vw,64px)}
@@ -301,6 +301,9 @@ a{color:inherit}
 
 /* clasic */
 .t-clasic .h-names{font-style:italic;font-weight:500}
+/* a script face reads small at the same size, and has its own slant */
+.inv.f-vibes .h-names,.inv.f-vibes .tk-title{font-size:clamp(3.8rem,16vw,11rem);font-style:normal;letter-spacing:0;line-height:1.1}
+.inv.f-vibes .sec-title{font-size:clamp(2.8rem,9vw,5.2rem);letter-spacing:0}
 .t-clasic .h-rule{width:min(240px,50vw);height:7px;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);margin:30px auto 0}
 .t-clasic .arch{width:min(260px,62vw);aspect-ratio:3/4;border-radius:999px 999px 6px 6px;outline:1px solid var(--accent);outline-offset:7px}
 

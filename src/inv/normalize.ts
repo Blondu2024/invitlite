@@ -1,5 +1,5 @@
 import { safePhotoUrl } from './sanitize';
-import { EVENT_KINDS, LIMITS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from './types';
+import { EVENT_KINDS, LIMITS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId, FONT_IDS, PICS, TINT_IDS, type FontId, type TintId } from './types';
 
 /**
  * A decoded link is untrusted JSON. Whatever shape arrives, what leaves here is
@@ -70,5 +70,8 @@ export function normalizeInvitation(raw: unknown): Invitation {
     title: str(o.title, LIMITS.title),
     snacks: str(o.snacks, LIMITS.snacks),
     music: oneOf<MusicId | ''>(o.music, MUSIC_IDS, ''),
+    pic: Number.isInteger(o.pic) && (o.pic as number) >= 0 && (o.pic as number) < PICS ? (o.pic as number) : 0,
+    tint: oneOf<TintId | ''>(o.tint, TINT_IDS, ''),
+    font: oneOf<FontId | ''>(o.font, FONT_IDS, ''),
   };
 }
