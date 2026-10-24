@@ -2,35 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { music, MUSIC_LABEL, type Music } from '../inv/music';
 import { sound, type Sound } from '../inv/sound';
 import { starter } from '../inv/defaults';
-import { KIND_LABEL } from '../inv/format';
+import { CATEGORIES, KINDS, kindsIn } from '../inv/kinds';
 import { THEMES } from '../inv/theme';
 import { waNumber } from '../inv/rsvp';
 import { photoLinkHint, safePhotoUrl } from '../inv/sanitize';
-import { EVENT_KINDS, LIMITS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from '../inv/types';
+import { LIMITS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from '../inv/types';
 import { invitationUrl } from '../inv/link';
 import { initialInvitation, persist } from './store';
 import { Preview } from './Preview';
 import { Share } from './Share';
 
 type Tab = 'form' | 'look' | 'send';
-
-const HOSTS_HINT: Record<Invitation['kind'], string> = {
-  nunta: 'Ana & Mihai',
-  botez: 'Sofia Maria',
-  cununie: 'Ana & Mihai',
-  aniversare: 'Bunicul Ion, 70 de ani',
-  copii: 'Matei, 5 ani',
-  film: 'Ioana și Radu',
-};
-
-const HOSTS_LABEL: Record<Invitation['kind'], string> = {
-  nunta: 'Numele mirilor',
-  botez: 'Numele copilului',
-  cununie: 'Numele mirilor',
-  aniversare: 'Sărbătoritul',
-  copii: 'Sărbătoritul',
-  film: 'Gazdele',
-};
 
 function Text(props: {
   label: string;
@@ -209,7 +191,8 @@ function MusicField(props: { value: Invitation['music']; onChange: (v: Invitatio
 }
 
 export function Editor() {
-  const [inv, setInv] = useState<Invitation>(() => initialInvitation(location.hash));
+  const [inv, setInv] = useState<Invitation>(() => initialInvitation(location.hash, location.search));
+  const [cat, setCat] = useState(() => KINDS[inv.kind].cat);
   const [tab, setTab] = useState<Tab>('form');
   const [rsvpDemo, setRsvpDemo] = useState('');
 
@@ -270,8 +253,15 @@ export function Editor() {
         <section className="ed-form" aria-label="Detaliile invitației">
           <div className="grp">
             <h2 className="grp-t">Ce sărbătoriți</h2>
+            <div className="cats" role="tablist" aria-label="Categoria">
+              {CATEGORIES.map((c) => (
+                <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} className={cat === c.id ? 'cat on' : 'cat'} onClick={() => setCat(c.id)}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
             <div className="chips" role="radiogroup" aria-label="Tipul evenimentului">
-              {EVENT_KINDS.map((k) => (
+              {kindsIn(cat).map((k) => (
                 <button
                   key={k}
                   type="button"
@@ -280,7 +270,7 @@ export function Editor() {
                   className={inv.kind === k ? 'chip on' : 'chip'}
                   onClick={() => inv.kind !== k && setInv((p) => starter(k, p))}
                 >
-                  {KIND_LABEL[k]}
+                  {KINDS[k].chip}
                 </button>
               ))}
             </div>
@@ -319,7 +309,7 @@ export function Editor() {
             {inv.kind === 'film' && (
               <Text label="Ce vedem (titlul serii)" value={inv.title} max={LIMITS.title} onChange={set('title')} placeholder="Maraton de comedii vechi" hint="Apare mare pe bilet. Poate fi orice, nu trebuie să fie numele unui film." />
             )}
-            <Text label={HOSTS_LABEL[inv.kind]} value={inv.hosts} max={LIMITS.hosts} onChange={set('hosts')} placeholder={HOSTS_HINT[inv.kind]} hint={inv.kind === 'nunta' || inv.kind === 'cununie' ? 'Pune „&" între nume pentru așezarea frumoasă.' : undefined} />
+            <Text label={KINDS[inv.kind].who} value={inv.hosts} max={LIMITS.hosts} onChange={set('hosts')} placeholder={KINDS[inv.kind].hint} hint={/&/.test(KINDS[inv.kind].hint) ? 'Pune „&" între nume pentru așezarea frumoasă.' : undefined} />
             <div className="two">
               <label className="f">
                 <span className="f-l">Data</span>
@@ -342,11 +332,13 @@ export function Editor() {
               <Text label="Ce mâncăm și ce bem (opțional)" value={inv.snacks} max={LIMITS.snacks} onChange={set('snacks')} rows={2} placeholder="Popcorn cu unt, pizza făcută în casă și limonadă." />
             </div>
           ) : (
+            (KINDS[inv.kind].family || inv.parents || inv.godparents) && (
             <div className="grp">
               <h2 className="grp-t">Familia</h2>
               <Text label="Părinții (opțional)" value={inv.parents} max={LIMITS.parents} onChange={set('parents')} rows={2} placeholder={'Elena și Gheorghe Popa\nMaria și Ion Stan'} />
               <Text label="Nașii (opțional)" value={inv.godparents} max={LIMITS.godparents} onChange={set('godparents')} rows={2} placeholder="Ioana și Andrei Munteanu" />
             </div>
+            )
           )}
 
           <div className="grp">

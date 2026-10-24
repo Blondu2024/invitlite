@@ -1,3 +1,4 @@
+import { sceneOf } from './kinds';
 import type { EventKind } from './types';
 
 /**
@@ -95,7 +96,7 @@ const POPCORN =
   p('M13 36c-3-6 1-11 6-10 1-6 8-8 12-4 3-5 11-4 12 2 5-1 8 5 5 9 M22 26c0-4 2-6 5-7 M38 24c2-2 5-2 7 0');
 
 export function mainMotif(kind: EventKind, cls = 'motif'): string {
-  switch (kind) {
+  switch (sceneOf(kind)) {
     case 'film':
       return svg(`${cls} m-reel`, '0 0 120 100', REEL);
     case 'botez':
@@ -112,7 +113,7 @@ export function mainMotif(kind: EventKind, cls = 'motif'): string {
 }
 
 export function smallMotif(kind: EventKind, cls = 'orn'): string {
-  switch (kind) {
+  switch (sceneOf(kind)) {
     case 'film':
       return svg(`${cls} m-popcorn`, '0 0 60 80', POPCORN);
     case 'botez':

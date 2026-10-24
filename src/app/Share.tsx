@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { encodeInvitation } from '../inv/codec';
 import { invitationUrl } from '../inv/link';
-import { KIND_NOUN } from '../inv/format';
+import { eventName } from '../inv/kinds';
 import { waShareUrl } from '../inv/rsvp';
 import type { Invitation } from '../inv/types';
 import { guestNames, loadGuests, saveGuests } from './store';
@@ -17,9 +17,8 @@ async function copy(text: string): Promise<boolean> {
 }
 
 function inviteText(inv: Invitation, url: string, guest = ''): string {
-  const who = inv.hosts ? ` ${inv.hosts}` : '';
   const hi = guest ? `Dragă ${guest}, ` : '';
-  return `${hi}vă invităm cu drag la ${KIND_NOUN[inv.kind]}${who}. Invitația și confirmarea sunt aici:\n${url}`;
+  return `${hi}vă invităm cu drag la ${eventName(inv.kind, inv.hosts)}. Invitația și confirmarea sunt aici:\n${url}`;
 }
 
 function CopyButton({ text, label = 'Copiază' }: { text: string; label?: string }) {

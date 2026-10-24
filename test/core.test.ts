@@ -234,3 +234,41 @@ describe('photo links', () => {
     expect(openHash(invitationHash(inv))?.inv.photo).toBe(inv.photo);
   });
 });
+
+describe('the occasions', () => {
+  it('every kind sits in a category, and every category has kinds', async () => {
+    const { CATEGORIES, KINDS, kindsIn } = await import('../src/inv/kinds');
+    expect(Object.keys(KINDS).sort()).toEqual([...EVENT_KINDS].sort());
+    for (const c of CATEGORIES) expect(kindsIn(c.id).length, c.id).toBeGreaterThan(0);
+    expect(CATEGORIES.flatMap((c) => kindsIn(c.id))).toHaveLength(EVENT_KINDS.length);
+    for (const k of EVENT_KINDS) {
+      const d = KINDS[k];
+      expect(d.places.length, k).toBeGreaterThan(0);
+      expect(d.places.length, k).toBeLessThanOrEqual(d.moments.length);
+      // no em dashes in anything a guest reads
+      expect(JSON.stringify(d), k).not.toMatch(/—|—/);
+    }
+  });
+
+  it('old links keep their kind, unknown kinds fall back to a wedding', () => {
+    for (const k of EVENT_KINDS) expect(normalizeInvitation({ kind: k }).kind).toBe(k);
+    expect(normalizeInvitation({ kind: 'parastas' }).kind).toBe('nunta');
+  });
+
+  it('names the event in plain Romanian, with or without hosts', async () => {
+    const { eventName } = await import('../src/inv/kinds');
+    expect(eventName('craciun', 'Familia Popescu')).toBe('masa de Crăciun de la Familia Popescu');
+    expect(eventName('craciun', '')).toBe('masa de Crăciun');
+    expect(eventName('nunta', 'Ana & Mihai')).toBe('nunta Ana & Mihai');
+    expect(rsvpText({ ...SAMPLE, kind: 'revelion', hosts: 'Ioana și Radu' }, { name: 'X', coming: true, adults: 1, kids: 0, veg: 0, message: '' })).toContain(
+      'Confirmare pentru revelionul de la Ioana și Radu',
+    );
+  });
+
+  it('the editor can start on any kind from the address', async () => {
+    const { initialInvitation } = await import('../src/app/store');
+    expect(initialInvitation('', '?tip=logodna').kind).toBe('logodna');
+    expect(initialInvitation('', '?tip=nimic').kind).toBe('nunta');
+    expect(initialInvitation(`#${encodeInvitation({ ...SAMPLE, kind: 'botez' })}`, '?tip=logodna').kind).toBe('botez');
+  });
+});

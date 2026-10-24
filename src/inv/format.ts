@@ -1,3 +1,4 @@
+import { KINDS, type KindDef } from './kinds';
 import type { EventKind } from './types';
 
 /** Romanian dates and plurals, by hand: Intl output varies between engines. */
@@ -56,24 +57,13 @@ export function daysUntil(iso: string, today: Date): number | null {
   return Math.round((b - a) / 86400000);
 }
 
-export const KIND_LABEL: Record<EventKind, string> = {
-  nunta: 'Nunta',
-  botez: 'Botezul',
-  cununie: 'Cununia civilă',
-  aniversare: 'Aniversarea',
-  copii: 'Petrecere de copii',
-  film: 'Seara de film',
-};
+const byKind = (f: (d: KindDef) => string) =>
+  Object.fromEntries(Object.entries(KINDS).map(([k, d]) => [k, f(d)])) as Record<EventKind, string>;
+
+export const KIND_LABEL = byKind((d) => d.label);
 
 /** Lower-case form for running text: "confirmare pentru nunta lui ...". */
-export const KIND_NOUN: Record<EventKind, string> = {
-  nunta: 'nunta',
-  botez: 'botezul',
-  cununie: 'cununia civilă',
-  aniversare: 'aniversarea',
-  copii: 'petrecerea',
-  film: 'seara de film',
-};
+export const KIND_NOUN = byKind((d) => d.noun);
 
 /** Small stable hash, so the same guest always gets the same seat. */
 export function hashName(s: string): number {

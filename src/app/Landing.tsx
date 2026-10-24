@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { SAMPLE, sampleFor } from '../inv/defaults';
+import { roCount } from '../inv/format';
 import { invitationUrl } from '../inv/link';
 import { rsvpText } from '../inv/rsvp';
 import { THEMES } from '../inv/theme';
+import { CATEGORIES, KINDS, kindsIn, type SceneKind } from '../inv/kinds';
 import { EVENT_KINDS, TEMPLATE_IDS, type EventKind } from '../inv/types';
 import { LivePhone } from './LivePhone';
 import { Preview } from './Preview';
 
-const CHIP: Record<EventKind, string> = {
+const SCENES: SceneKind[] = ['nunta', 'botez', 'cununie', 'aniversare', 'copii', 'film'];
+
+const CHIP: Record<SceneKind, string> = {
   nunta: 'Nuntă',
   botez: 'Botez',
   cununie: 'Cununie',
@@ -16,7 +20,7 @@ const CHIP: Record<EventKind, string> = {
   film: 'Film',
 };
 
-const OPENINGS: Record<EventKind, [string, string]> = {
+const OPENINGS: Record<SceneKind, [string, string]> = {
   nunta: ['Nunta', 'Voalul se ridică, cad petale, mirii se desenează în aur, iar inelele se ating cu un clinchet.'],
   botez: ['Botezul', 'Lumină caldă prin vitraliu. Un porumbel trece prin fața ecranului și lasă în urmă numele copilului.'],
   cununie: ['Cununia civilă', 'Un stilou scrie numele voastre în registru, apoi ștampila coboară: DA.'],
@@ -60,6 +64,9 @@ const DEMO_RSVP = rsvpText(SAMPLE, {
 
 const ENVELOPE =
   '<svg viewBox="0 0 64 44" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="2" y="2" width="60" height="40" rx="2"/><path d="M2 4l30 22L62 4"/><circle cx="32" cy="26" r="6" fill="currentColor" stroke="none"/></svg>';
+
+/** The occasions that open with this scene, besides its own. */
+const borrowers = (s: SceneKind) => EVENT_KINDS.filter((k) => k !== s && KINDS[k].scene === s);
 
 /** Adds "in" to .rv-l elements as they scroll into view, once. */
 function useReveal() {
@@ -107,6 +114,8 @@ export function Landing() {
   const [kind, setKind] = useState<EventKind>('nunta');
   const [round, setRound] = useState(0);
   const [demoMsg, setDemoMsg] = useState('');
+  const [occ, setOcc] = useState<EventKind>('logodna');
+  const occPh = useRef<HTMLElement>(null);
   const hero = useRef<HTMLDivElement>(null);
   const inv = useMemo(() => sampleFor(kind), [kind]);
   const sampleUrl = useMemo(() => invitationUrl(location.origin, inv, 'Familia Popescu'), [inv]);
@@ -116,6 +125,12 @@ export function Landing() {
     setKind(k);
     setRound((r) => r + 1);
     setDemoMsg('');
+  };
+  // On a phone the photograph sits above the index, often off screen: bring it back.
+  const pickOcc = (k: EventKind) => {
+    setOcc(k);
+    const r = occPh.current?.getBoundingClientRect();
+    if (r && (r.top < 0 || r.bottom > innerHeight)) occPh.current!.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   };
   const tryKind = (k: EventKind) => {
     choose(k);
@@ -164,11 +179,16 @@ export function Landing() {
             <LivePhone key={`${kind}-${round}`} inv={inv} onRsvp={(u) => setDemoMsg(decodeURIComponent(u.split('text=')[1] ?? ''))} />
           </div>
           <div className="kinds" role="radiogroup" aria-label="Tipul invitației de încercat">
-            {EVENT_KINDS.map((k) => (
+            {SCENES.map((k) => (
               <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => choose(k)}>
                 {CHIP[k]}
               </button>
             ))}
+            {!(SCENES as EventKind[]).includes(kind) && (
+              <button type="button" role="radio" aria-checked className="on">
+                {KINDS[kind].chip}
+              </button>
+            )}
           </div>
           <button type="button" className="again" onClick={() => choose(kind)}>
             Închide plicul la loc
@@ -204,7 +224,7 @@ export function Landing() {
           Fiecare tip de invitație se deschide altfel, cu sunetele lui și cu muzică de fundal compusă pentru INVITLITE. Totul pornește doar când invitatul atinge plicul.
         </p>
         <ol className="op-list">
-          {EVENT_KINDS.map((k, i) => (
+          {SCENES.map((k, i) => (
             <li key={k} className="rv-l">
               <span className="n">{String(i + 1).padStart(2, '0')}</span>
               <span className="op-ph">
@@ -213,6 +233,7 @@ export function Landing() {
               <div className="op-t">
                 <h3>{OPENINGS[k][0]}</h3>
                 <p>{OPENINGS[k][1]}</p>
+                {borrowers(k).length > 0 && <p className="op-also">Tot așa se deschid: {borrowers(k).map((b) => KINDS[b].chip).join(', ')}.</p>}
               </div>
               <button type="button" className="op-try" onClick={() => tryKind(k)}>
                 Încearcă
@@ -220,6 +241,47 @@ export function Landing() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section className="lp-sec lp-occ">
+        <h2 className="lp-h2 rv-l">
+          {roCount(EVENT_KINDS.length, 'ocazie', 'ocazii')}.
+          <br />
+          <em>Toate gratuite.</em>
+        </h2>
+        <p className="lp-lead rv-l">De la logodnă la tăierea moțului, de la grătarul din curte la întâlnirea de promoție. Fiecare are fotografia, textele și muzica ei, gata scrise. Tu doar le schimbi.</p>
+        <div className="occ">
+          <div className="occ-idx">
+            {CATEGORIES.map((c, i) => (
+              <div key={c.id} className="occ-cat rv-l">
+                <span className="n">{String(i + 1).padStart(2, '0')}</span>
+                <h3>{c.label}</h3>
+                <p className="occ-w">
+                  {kindsIn(c.id).map((k) => (
+                    <button key={k} type="button" className={occ === k ? 'on' : ''} aria-pressed={occ === k} onClick={() => pickOcc(k)}>
+                      {KINDS[k].chip}
+                    </button>
+                  ))}
+                </p>
+              </div>
+            ))}
+          </div>
+          <figure className="occ-ph" aria-live="polite" ref={occPh}>
+            <img key={occ} src={`/img/bg/${occ}-p.webp`} alt="" decoding="async" loading="lazy" />
+            <figcaption>
+              <b>{KINDS[occ].label}</b>
+              <span>{KINDS[occ].intro}</span>
+              <span className="occ-go">
+                <button type="button" className="op-try light" onClick={() => tryKind(occ)}>
+                  Vezi cum se deschide
+                </button>
+                <a className="occ-make" href={`/creeaza/?tip=${occ}`}>
+                  Fă-o pe a ta
+                </a>
+              </span>
+            </figcaption>
+          </figure>
+        </div>
       </section>
 
       <section className="lp-wa">

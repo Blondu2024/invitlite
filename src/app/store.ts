@@ -1,7 +1,7 @@
 import { starter } from '../inv/defaults';
 import { encodeInvitation } from '../inv/codec';
 import { openHash } from '../inv/link';
-import type { Invitation } from '../inv/types';
+import { EVENT_KINDS, type EventKind, type Invitation } from '../inv/types';
 
 /**
  * The editor's address bar always holds the current invitation (`/creeaza/#v1...`),
@@ -28,9 +28,12 @@ function write(key: string, value: string): void {
   }
 }
 
-export function initialInvitation(hash: string): Invitation {
+/** `/creeaza/?tip=logodna` starts a fresh invitation of that kind (the landing page links there). */
+export function initialInvitation(hash: string, search = ''): Invitation {
   const fromHash = openHash(hash);
   if (fromHash) return fromHash.inv;
+  const tip = new URLSearchParams(search).get('tip') as EventKind | null;
+  if (tip && EVENT_KINDS.includes(tip)) return starter(tip);
   const draft = read(DRAFT);
   const fromDraft = draft ? openHash(draft) : null;
   return fromDraft ? fromDraft.inv : starter('nunta');

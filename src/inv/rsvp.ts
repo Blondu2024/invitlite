@@ -1,4 +1,5 @@
-import { KIND_NOUN, shortDate } from './format';
+import { shortDate } from './format';
+import { eventName } from './kinds';
 import type { Invitation } from './types';
 
 /**
@@ -31,7 +32,7 @@ function clampCount(n: number, max: number): number {
 }
 
 export function rsvpText(inv: Invitation, a: RsvpAnswer): string {
-  const event = [KIND_NOUN[inv.kind], inv.hosts].filter(Boolean).join(' ');
+  const event = eventName(inv.kind, inv.hosts);
   const when = shortDate(inv.date);
   const lines = [`Confirmare pentru ${event}${when ? ` (${when})` : ''}`];
   lines.push(`Nume: ${a.name.trim() || '-'}`);

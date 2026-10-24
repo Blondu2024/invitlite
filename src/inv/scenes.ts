@@ -1,6 +1,7 @@
 import { dottedDate, KIND_LABEL, longDate } from './format';
 import { mainMotif } from './motifs';
 import { escHtml } from './sanitize';
+import { KINDS, sceneOf, type SceneKind } from './kinds';
 import type { Theme } from './theme';
 import type { Invitation } from './types';
 
@@ -19,6 +20,8 @@ import type { Invitation } from './types';
  *   copii      - balloons float up; popping them reveals when and where;
  *   film       - a velvet curtain parts on an old cinema countdown, 3 2 1, and
  *                the invitation lands as a ticket.
+ * The other kinds borrow one of these six (kinds.ts says which), with their
+ * own labels and closing words.
  * Line art is drawn by hand for this project.
  *
  * What wire() reads from a stage:
@@ -30,8 +33,8 @@ import type { Invitation } from './types';
  *   data-auto   - when to finish the taps for a guest who only watches.
  */
 
-/** The longest each scene runs from the tap, in ms. Kinds without a scene are absent. */
-export const SCENE_MS: Partial<Record<Invitation['kind'], number>> = {
+/** The longest each scene runs from the tap, in ms. */
+export const SCENE_MS: Record<SceneKind, number> = {
   nunta: 7800,
   botez: 7000,
   cununie: 6600,
@@ -96,7 +99,7 @@ const cues = (...c: string[]) => `data-cues="${c.join(',')}"`;
 function wedding(inv: Invitation, t: Theme): string {
   const names = inv.hosts
     ? escHtml(inv.hosts).replace(/\s*&amp;\s*/, '<i> &amp; </i>')
-    : 'Nunta noastră';
+    : escHtml(KIND_LABEL[inv.kind]);
   return `<div class="st st-wed" data-stage="${SCENE_MS.nunta}" ${cues('whoosh@0', 'whoosh@1300', 'chime@5650', 'sparkle@6000')} style="--gold:${GOLD[t.id]}">
 <div class="st-veil" aria-hidden="true"></div>
 <div class="st-in" aria-hidden="true">
@@ -120,8 +123,8 @@ const WINDOW = `<svg class="st-win" viewBox="0 0 120 180" aria-hidden="true">
 function baptism(inv: Invitation): string {
   return `<div class="st st-bap" data-stage="${SCENE_MS.botez}" ${cues('whoosh@0', 'bell@700', 'flutter@2300', 'flutter@3400', 'sparkle@4600')}>
 <div class="st-rays" aria-hidden="true"><i></i><i></i><i></i></div>${WINDOW}
-<p class="st-blbl" aria-hidden="true">${escHtml(KIND_LABEL.botez)}</p>
-<p class="st-bname" aria-hidden="true">${escHtml(inv.hosts || 'Botezul nostru')}</p>
+<p class="st-blbl" aria-hidden="true">${escHtml(KIND_LABEL[inv.kind])}</p>
+<p class="st-bname" aria-hidden="true">${escHtml(inv.hosts || (inv.kind === 'botez' ? 'Botezul nostru' : 'Vă așteptăm'))}</p>
 ${mainMotif('botez', 'st-dove')}${SND}${SKIP}</div>`;
 }
 
@@ -139,18 +142,20 @@ const PEN =
 
 function civil(inv: Invitation): string {
   const names = splitNames(inv.hosts);
-  if (!names.length) names.push('Noi doi');
+  const d = KINDS[inv.kind];
+  if (!names.length) names.push(inv.kind === 'cununie' ? 'Noi doi' : d.label);
   const line = (n: string, k: number) =>
     `<div class="civ-row"><span class="civ-line" style="--k:${k}"><span class="civ-name">${escHtml(n)}</span>${PEN}</span></div>`;
   const rows = names.map(line).join(names.length > 1 ? '<p class="civ-and">și</p>' : '');
-  const ring = `CUNUNIA CIVILĂ · ${dottedDate(inv.date) || 'ZIUA NOASTRĂ'} ·`;
+  const ring = `${d.ring ?? d.label.toLocaleUpperCase('ro')} · ${dottedDate(inv.date) || 'ZIUA NOASTRĂ'} ·`;
+  const word = d.stamp ?? 'DA';
   const scratches = names.map((_, k) => `scratch@${1500 + k * 1500}`);
   return `<div class="st st-civ" data-stage="${SCENE_MS.cununie}" ${cues('whoosh@0', ...scratches, 'stamp@4450', 'chime@4950')}>
-<div class="civ-sheet" aria-hidden="true"><p class="civ-head">${escHtml(KIND_LABEL.cununie)}</p>${rows}
+<div class="civ-sheet" aria-hidden="true"><p class="civ-head">${escHtml(d.label)}</p>${rows}
 <svg class="civ-stamp" viewBox="0 0 120 120"><defs><path id="civ-p" d="M18 60a42 42 0 1 1 84 0a42 42 0 1 1-84 0"/></defs>
 <circle cx="60" cy="60" r="56" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="60" cy="60" r="31" fill="none" stroke="currentColor" stroke-width="1.5"/>
 <text font-size="10" font-weight="600" fill="currentColor"><textPath href="#civ-p" textLength="258" lengthAdjust="spacing">${escHtml(ring)}</textPath></text>
-<text x="60" y="71" text-anchor="middle" font-size="30" font-weight="700" fill="currentColor">DA</text></svg></div>${SND}${SKIP}</div>`;
+<text x="60" y="${word.length > 3 ? 64 : 71}" text-anchor="middle" font-size="${word.length > 3 ? 12 : 30}" font-weight="700" fill="currentColor">${escHtml(word)}</text></svg></div>${SND}${SKIP}</div>`;
 }
 
 /** A cake drawn in flat colour; the candles are buttons laid over its top tier. */
@@ -174,7 +179,7 @@ function birthday(inv: Invitation): string {
 <div class="bd-in">${age ? `<p class="bd-age" aria-hidden="true">${age}</p>` : ''}
 <p class="bd-hint">Pune-ți o dorință și stinge lumânările</p>
 <div class="bd-cake">${CAKE}${candles}</div>
-<p class="bd-wish" aria-live="polite">La mulți ani!</p>
+<p class="bd-wish" aria-live="polite">${escHtml(KINDS[inv.kind].wish ?? 'La mulți ani!')}</p>
 <p class="bd-who">${escHtml(inv.hosts)}</p></div>${SND}${SKIP}</div>
 <canvas class="petals" data-petals="${CONFETTI}" data-shape="confetti" data-at="100" aria-hidden="true"></canvas>`;
 }
@@ -196,10 +201,10 @@ function kids(inv: Invitation): string {
     )
     .join('');
   return `<div class="st st-kid" data-stage="${SCENE_MS.copii}" data-auto="${AUTO_MS}" data-after="2800" data-done="horn" ${cues('whoosh@0', 'sparkle@800')}>
-<div class="kd-in"><p class="kd-lbl">${escHtml(KIND_LABEL.copii)}</p><p class="kd-who">${escHtml(inv.hosts || 'Ești invitat!')}</p>
+<div class="kd-in"><p class="kd-lbl">${escHtml(KIND_LABEL[inv.kind])}</p><p class="kd-who">${escHtml(inv.hosts || 'Ești invitat!')}</p>
 <p class="kd-hint">Sparge baloanele ca să afli când și unde</p>
 <div class="kd-row">${slots}</div>
-<p class="kd-end" aria-live="polite">Te așteptăm cu drag!</p></div>${SND}${SKIP}</div>
+<p class="kd-end" aria-live="polite">${escHtml(KINDS[inv.kind].wish ?? 'Te așteptăm cu drag!')}</p></div>${SND}${SKIP}</div>
 <canvas class="petals" data-petals="${CONFETTI}" data-shape="confetti" data-at="done" aria-hidden="true"></canvas>`;
 }
 
@@ -214,7 +219,7 @@ function film(): string {
 
 /** The layer behind the envelope (or curtain) that plays once it opens. */
 export function stage(inv: Invitation, t: Theme): string {
-  switch (inv.kind) {
+  switch (sceneOf(inv.kind)) {
     case 'nunta':
       return wedding(inv, t);
     case 'botez':

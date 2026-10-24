@@ -1,7 +1,19 @@
-export type EventKind = 'nunta' | 'botez' | 'cununie' | 'aniversare' | 'copii' | 'film';
+export type EventKind =
+  | 'nunta' | 'cununie' | 'logodna' | 'casatorie' | 'burlaci' | 'burlacite'
+  | 'botez' | 'copii' | 'mot' | 'bebe' | 'genul'
+  | 'aniversare' | 'majorat' | 'onomastica'
+  | 'craciun' | 'paste' | 'revelion' | 'casa' | 'gratar' | 'film'
+  | 'absolvire' | 'banchet' | 'promotie' | 'pensie' | 'deschidere';
 export type TemplateId = 'clasic' | 'botanic' | 'seara';
 
-export const EVENT_KINDS: EventKind[] = ['nunta', 'botez', 'cununie', 'aniversare', 'copii', 'film'];
+/** In category order (see kinds.ts). The id travels in the link, so it never changes. */
+export const EVENT_KINDS: EventKind[] = [
+  'nunta', 'cununie', 'logodna', 'casatorie', 'burlaci', 'burlacite',
+  'botez', 'copii', 'mot', 'bebe', 'genul',
+  'aniversare', 'majorat', 'onomastica',
+  'craciun', 'paste', 'revelion', 'casa', 'gratar', 'film',
+  'absolvire', 'banchet', 'promotie', 'pensie', 'deschidere',
+];
 export const TEMPLATE_IDS: TemplateId[] = ['clasic', 'botanic', 'seara'];
 
 /** Background tunes, composed for this project and played by the browser itself. */

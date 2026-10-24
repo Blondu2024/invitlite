@@ -57,6 +57,9 @@ button{font:inherit;color:inherit}
 .f input:focus,.f textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:420px){.two{grid-template-columns:1fr}}
+.cats{display:flex;flex-wrap:wrap;gap:2px 18px;margin:0 0 14px;border-bottom:1px solid var(--line)}
+.cat{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:8px 0;font:inherit;font-size:.92rem;color:var(--muted);cursor:pointer}
+.cat.on{color:var(--ink);border-bottom-color:var(--ink)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .chip{border:1px solid var(--line);background:var(--card);padding:10px 16px;border-radius:999px;cursor:pointer}
 .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}

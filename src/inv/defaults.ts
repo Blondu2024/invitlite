@@ -1,3 +1,4 @@
+import { KINDS } from './kinds';
 import type { EventKind, Invitation, Moment } from './types';
 
 /** Starter text per event, so nobody faces an empty form. Everything is editable. */
@@ -10,56 +11,12 @@ const m = (title: string, time: string, place = '', address = ''): Moment => ({
   mapUrl: '',
 });
 
-export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 'moments' | 'askKids' | 'askMenu' | 'music'>> = {
-  nunta: {
-    intro: 'Cu bucurie în suflet, vă invităm să fiți alături de noi în ziua în care ne unim destinele.',
-    message: 'Dragostea nu constă în a ne privi unul pe altul, ci în a privi împreună în aceeași direcție.',
-    moments: [m('Cununia religioasă', '15:00'), m('Petrecerea', '19:00')],
-    askKids: true,
-    askMenu: true,
-    music: 'vals',
-  },
-  botez: {
-    intro: 'Pentru că cele mai frumoase momente se trăiesc alături de cei dragi, vă invităm la botezul nostru.',
-    message: 'Am venit pe lume de curând și vreau să vă cunosc pe toți.',
-    moments: [m('Taina Sfântului Botez', '12:00'), m('Masa festivă', '14:00')],
-    askKids: true,
-    askMenu: false,
-    music: 'cutie',
-  },
-  cununie: {
-    intro: 'Ne spunem „da" în fața ofițerului de stare civilă și vrem să fiți acolo.',
-    message: '',
-    moments: [m('Cununia civilă', '13:00'), m('Masa în familie', '15:00')],
-    askKids: false,
-    askMenu: false,
-    music: 'pian',
-  },
-  aniversare: {
-    intro: 'Facem o petrecere și locul tău e la masa noastră.',
-    message: '',
-    moments: [m('Petrecerea', '19:00')],
-    askKids: false,
-    askMenu: false,
-    music: 'petrecere',
-  },
-  copii: {
-    intro: 'Facem o petrecere cu baloane, tort și multă joacă. Ne-ar bucura tare să fiți și voi acolo!',
-    message: '',
-    moments: [m('Petrecerea', '16:00')],
-    askKids: true,
-    askMenu: false,
-    music: 'petrecere',
-  },
-  film: {
-    intro: 'Stingem lumina, facem popcorn și ne strângem pe canapea. Locul tău e păstrat.',
-    message: '',
-    moments: [m('Începe filmul', '20:00')],
-    askKids: false,
-    askMenu: false,
-    music: 'jazz',
-  },
-};
+export const STARTERS = Object.fromEntries(
+  Object.entries(KINDS).map(([k, d]) => [
+    k,
+    { intro: d.intro, message: d.message, moments: d.moments.map(([t, h]) => m(t, h)), askKids: d.askKids, askMenu: d.askMenu, music: d.music },
+  ]),
+) as Record<EventKind, Pick<Invitation, 'intro' | 'message' | 'moments' | 'askKids' | 'askMenu' | 'music'>>;
 
 export function starter(kind: EventKind, prev?: Invitation): Invitation {
   const s = STARTERS[kind];
@@ -118,25 +75,22 @@ export const SAMPLE: Invitation = {
 export function sampleFor(kind: EventKind): Invitation {
   if (kind === 'nunta') return SAMPLE;
   if (kind === 'film') return SAMPLE_FILM;
-  const base: Invitation = {
+  const d = KINDS[kind];
+  return {
     ...SAMPLE,
     kind,
-    intro: STARTERS[kind].intro,
-    message: STARTERS[kind].message,
-    music: STARTERS[kind].music,
-    askKids: STARTERS[kind].askKids,
-    askMenu: STARTERS[kind].askMenu,
+    template: d.template,
+    hosts: d.sample ?? d.hint,
+    intro: d.intro,
+    message: d.message,
+    music: d.music,
+    askKids: d.askKids,
+    askMenu: d.askMenu,
+    parents: d.family ? SAMPLE.parents : '',
+    godparents: d.family ? SAMPLE.godparents : '',
+    moments: d.places.map(([place, address], i) => m(d.moments[i]?.[0] ?? d.moments[0][0], d.moments[i]?.[1] ?? '', place, address)),
+    note: '',
   };
-  switch (kind) {
-    case 'botez':
-      return { ...base, template: 'botanic', hosts: 'Sofia Maria' };
-    case 'cununie':
-      return { ...base, hosts: 'Ana & Mihai', parents: '', godparents: '', moments: [m('Cununia civilă', '13:00', 'Primăria Galați', 'Strada Domnească 38, Galați')] };
-    case 'aniversare':
-      return { ...base, template: 'seara', hosts: 'Bunicul Ion, 70 de ani', parents: '', godparents: '', moments: [m('Petrecerea', '19:00', 'Restaurantul de la malul Dunării', 'Faleza Dunării, Galați')] };
-    default:
-      return { ...base, hosts: 'Matei, 4 ani', parents: '', godparents: '', moments: [m('Petrecerea', '16:00', 'Locul de joacă Arca', 'Galați')] };
-  }
 }
 
 /** The film-night example. Fictional people, an invented title. */

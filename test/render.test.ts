@@ -8,6 +8,7 @@ import { starter } from '../src/inv/defaults';
 import { normalizeInvitation } from '../src/inv/normalize';
 import { AUTO_MS, SCENE_MS, splitNames } from '../src/inv/scenes';
 import { sound } from '../src/inv/sound';
+import { sceneOf, type SceneKind } from '../src/inv/kinds';
 
 const o = { base: 'https://invitlite.app', guest: '', envelope: true, today: new Date(2027, 0, 1) };
 
@@ -219,7 +220,7 @@ describe('entrance scenes', () => {
     const html = renderBody(SAMPLE, o);
     expect(html).toContain('st-couple');
     expect(html).toContain('data-petals');
-    const want: Record<Invitation['kind'], string> = {
+    const want: Record<SceneKind, string> = {
       nunta: 'st-wed',
       botez: 'st-bap',
       cununie: 'st-civ',
@@ -229,7 +230,7 @@ describe('entrance scenes', () => {
     };
     for (const k of EVENT_KINDS) {
       const h = renderBody({ ...SAMPLE, kind: k }, o);
-      expect(h, k).toContain(want[k]);
+      expect(h, k).toContain(want[sceneOf(k)]);
       expect(h, k).toContain('data-skip');
       expect(h, k).toContain('data-snd');
       expect(h, k).toMatch(/data-cues="[a-z]+@\d+/);
@@ -690,5 +691,34 @@ describe('landing samples', () => {
       expect(openHash(invitationHash(inv, ''))?.inv).toEqual(normalizeInvitation(inv));
       expect(mount(inv).querySelector('.st')).not.toBeNull();
     }
+  });
+});
+
+describe('occasions borrowing a scene', () => {
+  const view = (inv: Invitation) => renderBody(inv, o);
+
+  it('speak their own words, not those of the scene they borrow', () => {
+    const reunion = view({ ...SAMPLE, kind: 'promotie', hosts: 'Promoția 2006' });
+    expect(reunion).toContain('st-civ');
+    expect(reunion).toContain('>PREZENT</text>');
+    expect(reunion).toContain('PROMOȚIA · 12.06.2027 ·');
+    expect(reunion).not.toContain('CUNUNIA');
+
+    const ny = view({ ...SAMPLE, kind: 'revelion' });
+    expect(ny).toContain('st-kid');
+    expect(ny).toContain('>Revelionul</p>');
+    expect(ny).toContain('La mulți ani!');
+
+    const xmas = view({ ...SAMPLE, kind: 'craciun' });
+    expect(xmas).toContain('st-bap');
+    expect(xmas).toContain('Masa de Crăciun');
+    expect(xmas).not.toContain('>Botezul<');
+
+    const mot = view({ ...SAMPLE, kind: 'mot', hosts: 'Matei, 1 an' });
+    expect(mot.match(/class="bd-c"/g)).toHaveLength(1);
+  });
+
+  it('the civil wedding still stamps DA', () => {
+    expect(view({ ...SAMPLE, kind: 'cununie' })).toContain('>DA</text>');
   });
 });
