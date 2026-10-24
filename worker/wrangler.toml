@@ -9,3 +9,7 @@ ORIGINS = "https://invitlite-preview.vercel.app,https://invitlite.app,http://loc
 [[kv_namespaces]]
 binding = "PHOTOS"
 id = "6ce7ba21e8764704b193d6643188318d"
+
+# Keep nothing about uploaders or viewers.
+[observability]
+enabled = false

@@ -70,38 +70,62 @@ export async function uploadPhoto(file: File, eventDate: string): Promise<Upload
 
 const KEYS = 'invitlite.photoKeys';
 
-function keys(): Record<string, string> {
+/** What this browser knows about the photos it uploaded: the delete key and the deletion day. */
+type Mine = Record<string, { key: string; until: number }>;
+
+function mine(): Mine {
   try {
-    return JSON.parse(localStorage.getItem(KEYS) ?? '{}') as Record<string, string>;
+    const raw = JSON.parse(localStorage.getItem(KEYS) ?? '{}') as Record<string, unknown>;
+    const out: Mine = {};
+    for (const [u, v] of Object.entries(raw)) {
+      if (typeof v === 'string') out[u] = { key: v, until: 0 };
+      else if (v && typeof v === 'object' && typeof (v as { key: unknown }).key === 'string') out[u] = v as Mine[string];
+    }
+    return out;
   } catch {
     return {};
   }
 }
 
-function remember(u: Uploaded): void {
+function save(m: Mine): void {
   try {
-    localStorage.setItem(KEYS, JSON.stringify({ ...keys(), [u.url]: u.key }));
+    localStorage.setItem(KEYS, JSON.stringify(m));
   } catch {
     /* private mode: the photo still expires on its own */
   }
 }
 
+function remember(u: Uploaded): void {
+  save({ ...mine(), [u.url]: { key: u.key, until: u.until } });
+}
+
 /** True when this browser uploaded `url` and can delete it. */
 export function canDelete(url: string): boolean {
-  return !!PHOTO_API && url.startsWith(`${PHOTO_API}/p/`) && !!keys()[url];
+  return !!PHOTO_API && url.startsWith(`${PHOTO_API}/p/`) && !!mine()[url];
+}
+
+/** The day the server deletes `url`, when this browser uploaded it. */
+export function photoUntil(url: string): number {
+  return mine()[url]?.until ?? 0;
 }
 
 export async function deletePhoto(url: string): Promise<boolean> {
-  const key = keys()[url];
-  if (!key) return false;
-  const res = await fetch(url, { method: 'DELETE', headers: { 'X-Key': key } }).catch(() => null);
+  const m = mine();
+  if (!m[url]) return false;
+  const res = await fetch(url, { method: 'DELETE', headers: { 'X-Key': m[url].key } }).catch(() => null);
   if (!res?.ok) return false;
-  const k = keys();
-  delete k[url];
-  try {
-    localStorage.setItem(KEYS, JSON.stringify(k));
-  } catch {
-    /* nothing */
-  }
+  delete m[url];
+  save(m);
   return true;
+}
+
+/** The event date changed: move the deletion day with it. Returns the new day, or 0. */
+export async function movePhotoDay(url: string, eventDate: string): Promise<number> {
+  const m = mine();
+  if (!m[url]) return 0;
+  const res = await fetch(`${url}?date=${encodeURIComponent(eventDate)}`, { method: 'PATCH', headers: { 'X-Key': m[url].key } }).catch(() => null);
+  if (!res?.ok) return 0;
+  const { until } = (await res.json()) as { until: number };
+  save({ ...mine(), [url]: { key: m[url].key, until } });
+  return until;
 }

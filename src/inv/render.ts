@@ -248,7 +248,7 @@ export function renderBody(inv: Invitation, o: RenderOpts): string {
       : '';
   return `${envelope(inv, t, o)}${tune}<main class="inv t-${t.id} k-${inv.kind}${inv.font ? ` f-${inv.font}` : ''}">
 ${hero(inv, t, o)}${message}${family(inv)}${program(inv)}${snacks}${note}${rsvp(inv, o)}${cal}
-<footer class="badge"><a href="${escHtml(o.base)}/" target="_blank" rel="noopener">Invitație făcută gratuit cu <b>INVITLITE</b>. Fă-o și pe a ta</a></footer>
+<footer class="badge"><a href="${escHtml(o.base)}/" target="_blank" rel="noopener">Invitație făcută gratuit cu <b>INVITLITE</b>. Fă-o și pe a ta</a><a class="badge-l" href="${escHtml(o.base)}/confidentialitate/" target="_blank" rel="noopener">Confidențialitate</a><a class="badge-l" href="${escHtml(o.base)}/confidentialitate/#raporteaza" target="_blank" rel="noopener">Raportează</a></footer>
 </main>`;
 }
 
@@ -420,6 +420,8 @@ mask:radial-gradient(circle at 66% 0,transparent 13px,#000 13.5px) top/100% 51% 
 
 .badge{text-align:center;padding:28px var(--gut) 40px;font-size:.78rem;color:var(--muted)}
 .badge a{text-decoration:none;border-bottom:1px solid var(--line)}
+.badge-l{display:inline-block;margin:10px 8px 0;font-size:.72rem;opacity:.8}
+.badge a:first-child{display:block;width:max-content;max-width:100%;margin:0 auto}
 
 /* envelope */
 .env{position:fixed;inset:0;z-index:10;background:var(--deep);color:var(--on-deep);display:grid;place-items:center;perspective:1400px;transition:transform 1s .55s cubic-bezier(.7,0,.2,1)}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import worker from '../worker/src/index';
-import { deleteAfter, MAX_BYTES, randomId, sniff, type Env, type Meta, type Store } from '../worker/src/lib';
+import { deleteAfter, MAX_BYTES, NO_DATE_DAYS, randomId, sniff, type Env, type Meta, type Store } from '../worker/src/lib';
 import { fitSize } from '../src/app/upload';
 
 /** Workers KV, in a Map (expiry is KV's job, so only recorded here). */
@@ -72,17 +72,32 @@ describe('photo worker', () => {
   it('keeps a photo until 30 days after the event, then it is gone', async () => {
     const now = Date.UTC(2027, 0, 1);
     expect(deleteAfter('2027-06-12', now)).toBe(Date.UTC(2027, 6, 12));
-    expect(deleteAfter('', now)).toBe(now + 365 * 86400000);
-    expect(deleteAfter('2015-01-01', now)).toBe(now + 365 * 86400000); // a past date is a typo
+    expect(deleteAfter('', now)).toBe(now + 90 * 86400000);
+    expect(deleteAfter('2015-01-01', now)).toBe(now + 90 * 86400000); // a past date is a typo
     expect(deleteAfter('2099-01-01', now)).toBe(now + 730 * 86400000);
 
     // even if KV is slow to drop it, a photo past its day is never served
     const { call, m } = setup();
     const { id } = (await (await call('/up', { method: 'POST', body: WEBP })).json()) as { id: string };
     const r = await call(`/p/${id}`);
-    expect(Number(/max-age=(\d+)/.exec(r.headers.get('Cache-Control')!)![1])).toBeLessThanOrEqual(31536000);
+    expect(Number(/max-age=(\d+)/.exec(r.headers.get('Cache-Control')!)![1])).toBeLessThanOrEqual(86400); // a deleted photo leaves guests' phones within a day
     m.get(id)!.metadata.until = Date.now() - 1;
     expect((await call(`/p/${id}`)).status).toBe(404);
+  });
+
+  it('moves the deletion day when the event moves, only with the key', async () => {
+    const { call, m } = setup();
+    const { id, key, until } = (await (await call('/up', { method: 'POST', body: WEBP })).json()) as { id: string; key: string; until: number };
+    expect(until).toBeGreaterThan(Date.now() + (NO_DATE_DAYS - 1) * 86400000);
+    expect((await call(`/p/${id}?date=2027-06-12`, { method: 'PATCH', headers: { 'X-Key': 'nope' } })).status).toBe(403);
+    const r = await call(`/p/${id}?date=2027-06-12`, { method: 'PATCH', headers: { 'X-Key': key } });
+    expect(r.status).toBe(200);
+    const moved = Date.UTC(2027, 6, 12);
+    expect(((await r.json()) as { until: number }).until).toBe(moved);
+    expect(m.get(id)!.metadata.until).toBe(moved);
+    expect(m.get(id)!.expiration).toBe(moved / 1000);
+    expect(m.get(id)!.value).toEqual(WEBP); // same photo, rewritten
+    expect((await call('/p/AAAAAAAAAAAAAAAA?date=2027-06-12', { method: 'PATCH', headers: { 'X-Key': key } })).status).toBe(404);
   });
 
   it('knows images by their bytes', () => {
@@ -103,5 +118,21 @@ describe('shrinking in the browser', () => {
     expect(fitSize(4000, 3000)).toEqual([1600, 1200]);
     expect(fitSize(3000, 4000)).toEqual([1200, 1600]);
     expect(fitSize(800, 600)).toEqual([800, 600]);
+  });
+});
+
+describe('the privacy page', () => {
+  it('exists, says what the code does, and is linked from every invitation', async () => {
+    const { readFileSync } = await import('node:fs');
+    const html = readFileSync('confidentialitate/index.html', 'utf8');
+    expect(html).toContain('30 de zile după');
+    expect(html).toContain(`${NO_DATE_DAYS} de zile`);
+    expect(html).toContain('id="raporteaza"');
+    expect(html).toContain('ELI-SAMI-TECH');
+    expect(html).not.toMatch(/—|—/);
+    const { renderBody } = await import('../src/inv/render');
+    const { SAMPLE } = await import('../src/inv/defaults');
+    const inv = renderBody(SAMPLE, { base: 'https://invitlite.app', guest: '', envelope: true, today: new Date(2027, 0, 1) });
+    expect(inv).toContain('https://invitlite.app/confidentialitate/#raporteaza');
   });
 });

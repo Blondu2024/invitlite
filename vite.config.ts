@@ -11,6 +11,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         editor: resolve(__dirname, 'creeaza/index.html'),
         viewer: resolve(__dirname, 'i/index.html'),
+        legal: resolve(__dirname, 'confidentialitate/index.html'),
       },
     },
   },

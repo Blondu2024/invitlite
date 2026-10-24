@@ -10,7 +10,12 @@
  *
  *   POST   /up?date=YYYY-MM-DD   body: the image (webp or jpeg)  -> { id, url, key }
  *   GET    /p/:id                the image, cached forever
+ *   PATCH  /p/:id?date=YYYY-MM-DD  header X-Key: the event moved, so does the deletion day
  *   DELETE /p/:id                header X-Key: the key from upload
+ *
+ * Nothing about who uploaded or who looked is kept: no accounts, no logs
+ * (observability is off in wrangler.toml). To remove a photo someone reports:
+ *   npx wrangler kv key delete --binding PHOTOS <id> --remote
  */
 
 import { cors, deleteAfter, ID_RE, json, MAX_BYTES, randomId, sha256, sniff, type Env } from './lib';
@@ -47,20 +52,26 @@ export default {
         return new Response(req.method === 'HEAD' ? null : value, {
           headers: {
             'Content-Type': metadata.type,
-            // browsers may keep it, but not past the day it is deleted here
-            'Cache-Control': `public, max-age=${Math.min(left, 31536000)}`,
+            // a day at most, so a photo the host deletes soon leaves the guests' phones too
+            'Cache-Control': `public, max-age=${Math.min(left, 86400)}`,
             'X-Content-Type-Options': 'nosniff',
             'Cross-Origin-Resource-Policy': 'cross-origin',
           },
         });
       }
-      if (req.method === 'DELETE') {
-        const { metadata } = await env.PHOTOS.getWithMetadata(id, { type: 'arrayBuffer' });
+      if (req.method === 'DELETE' || req.method === 'PATCH') {
+        const { value, metadata } = await env.PHOTOS.getWithMetadata(id, { type: 'arrayBuffer' });
         const given = req.headers.get('X-Key') ?? '';
-        if (!metadata) return json({ ok: true }, 200, h);
+        if (!metadata || !value) return req.method === 'DELETE' ? json({ ok: true }, 200, h) : json({ error: 'gone' }, 404, h);
         if (!given || (await sha256(given)) !== metadata.key) return json({ error: 'key' }, 403, h);
-        await env.PHOTOS.delete(id);
-        return json({ ok: true }, 200, h);
+        if (req.method === 'DELETE') {
+          await env.PHOTOS.delete(id);
+          return json({ ok: true }, 200, h);
+        }
+        // KV cannot change an expiry in place: write the same bytes again
+        const until = deleteAfter(url.searchParams.get('date'), Date.now());
+        await env.PHOTOS.put(id, new Uint8Array(value), { expiration: Math.floor(until / 1000), metadata: { ...metadata, until } });
+        return json({ until }, 200, h);
       }
     }
     return new Response('INVITLITE', { status: 404 });

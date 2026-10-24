@@ -23,6 +23,8 @@ export interface Env {
 
 export const MAX_BYTES = 700 * 1024;
 const DAY = 86400000;
+/** How long a photo stays when the invitation has no date yet. */
+export const NO_DATE_DAYS = 90;
 export const ID_RE = /^[A-Za-z0-9]{16}$/;
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -49,11 +51,11 @@ export function sniff(b: Uint8Array): 'image/webp' | 'image/jpeg' | null {
   return null;
 }
 
-/** 30 days after the event; a year from now without one; never more than two years out. */
+/** 30 days after the event; 90 days from now without one; never more than two years out. */
 export function deleteAfter(date: string | null, now: number): number {
   const m = date && /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   const event = m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN;
-  const at = Number.isFinite(event) && event > now - 30 * DAY ? event + 30 * DAY : now + 365 * DAY;
+  const at = Number.isFinite(event) && event > now - 30 * DAY ? event + 30 * DAY : now + NO_DATE_DAYS * DAY;
   return Math.min(at, now + 730 * DAY);
 }
 
@@ -61,7 +63,7 @@ export function cors(req: Request, env: Env): Record<string, string> {
   const origin = req.headers.get('Origin') ?? '';
   const ok = env.ORIGINS.split(',').map((s) => s.trim()).includes(origin);
   return ok
-    ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, DELETE', 'Access-Control-Allow-Headers': 'Content-Type, X-Key', Vary: 'Origin' }
+    ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, PATCH, DELETE', 'Access-Control-Allow-Headers': 'Content-Type, X-Key', Vary: 'Origin' }
     : { Vary: 'Origin' };
 }
 

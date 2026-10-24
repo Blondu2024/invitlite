@@ -10,7 +10,8 @@ import { photoLinkHint, safePhotoUrl } from '../inv/sanitize';
 import { FONT_IDS, LIMITS, PICS, TINT_IDS, MUSIC_IDS, TEMPLATE_IDS, type Invitation, type Moment, type MusicId } from '../inv/types';
 import { invitationUrl } from '../inv/link';
 import { initialInvitation, persist } from './store';
-import { canDelete, deletePhoto, PHOTO_API, uploadPhoto } from './upload';
+import { canDelete, deletePhoto, movePhotoDay, PHOTO_API, photoUntil, uploadPhoto } from './upload';
+import { shortDate } from '../inv/format';
 import { Preview } from './Preview';
 import { Share } from './Share';
 
@@ -104,14 +105,31 @@ function PhotoField({ value, date, onChange }: { value: string; date: string; on
   const url = safePhotoUrl(value);
   const hint = photoLinkHint(value);
   const ours = !!PHOTO_API && value.startsWith(`${PHOTO_API}/p/`);
+  const [agreed, setAgreed] = useState(false);
+  const [until, setUntil] = useState(() => photoUntil(value));
   useEffect(() => setState('idle'), [url]);
+  useEffect(() => setUntil(photoUntil(value)), [value]);
+  // the event moved: the photo's deletion day follows it (quietly, a moment after typing stops)
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (!canDelete(value)) return;
+    const t = setTimeout(() => movePhotoDay(value, date).then((u) => u && setUntil(u)), 1200);
+    return () => clearTimeout(t);
+  }, [date]); // eslint-disable-line react-hooks/exhaustive-deps
+  const day = until ? shortDate(new Date(until).toISOString().slice(0, 10)) : '';
 
   const pick = async (file: File | undefined) => {
     if (!file) return;
     setErr('');
     setBusy(true);
     try {
-      onChange((await uploadPhoto(file, date)).url);
+      const up = await uploadPhoto(file, date);
+      if (canDelete(value)) await deletePhoto(value); // the one it replaces
+      onChange(up.url);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -127,10 +145,21 @@ function PhotoField({ value, date, onChange }: { value: string; date: string; on
   return (
     <div className="f photo-f">
       <span className="f-l">Poza voastră (opțional)</span>
+      {PHOTO_API && !value && (
+        <label className="agree">
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+          <span>
+            Am acordul celor din poză (pentru copii, al părinților) și sunt de acord ca INVITLITE s-o păstreze doar pentru această invitație, până la 30 de zile după eveniment.{' '}
+            <a href="/confidentialitate/" target="_blank" rel="noopener">
+              Detalii
+            </a>
+          </span>
+        </label>
+      )}
       {PHOTO_API && (
         <div className="up">
           <input ref={pickRef} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0])} />
-          <button type="button" className="up-b" disabled={busy} onClick={() => pickRef.current?.click()}>
+          <button type="button" className="up-b" disabled={busy || (!value && !agreed)} onClick={() => pickRef.current?.click()}>
             {busy ? 'Se pregătește și se urcă...' : value ? 'Alege altă poză' : 'Alege o poză de pe telefon sau PC'}
           </button>
           {value && (
@@ -142,7 +171,13 @@ function PhotoField({ value, date, onChange }: { value: string; date: string; on
       )}
       {err && <span className="f-h f-warn">{err}</span>}
       {!value && <span className="f-h">Fără poza voastră, invitația folosește fotografia aleasă mai sus. Cu poza voastră, o înlocuiește.</span>}
-      {ours && <span className="f-h">Poza e micșorată și fără datele ascunse din ea (locul, telefonul). O păstrăm doar pentru invitație și se șterge singură la 30 de zile după eveniment.</span>}
+      {ours && (
+        <span className="f-h">
+          Poza e micșorată și fără datele ascunse din ea (locul, telefonul).{' '}
+          <b>{day ? `Se șterge automat pe ${day}` : 'Se șterge automat la 30 de zile după eveniment'}</b>
+          {date ? ', la 30 de zile după eveniment.' : '. Invitația n-are încă dată, așa că o păstrăm 90 de zile; când puneți data, ziua se mută la 30 de zile după eveniment.'} O puteți scoate oricând mai devreme.
+        </span>
+      )}
       {hint && !ours && <span className="f-h f-warn">{hint}</span>}
       {url && (
         <div className="photo-prev">

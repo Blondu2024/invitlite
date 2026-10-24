@@ -440,6 +440,9 @@ export function Landing() {
 
       <footer className="lp-foot">
         <p>INVITLITE este un proiect gratuit al ELI-SAMI-TECH S.R.L., CUI 52120263, J2025050145008, București.</p>
+        <p>
+          <a href="/confidentialitate/">Confidențialitate și termeni</a>
+        </p>
         <p>Nu folosim cookie-uri și nu stocăm invitațiile. Păstrăm doar pozele pe care le urcați voi, până la 30 de zile după eveniment. Fonturile sunt găzduite la noi, nu la Google.</p>
       </footer>
     </div>
