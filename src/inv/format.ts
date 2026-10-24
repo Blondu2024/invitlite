@@ -61,6 +61,7 @@ export const KIND_LABEL: Record<EventKind, string> = {
   botez: 'Botezul',
   cununie: 'Cununia civilă',
   aniversare: 'Aniversarea',
+  copii: 'Petrecere de copii',
   film: 'Seara de film',
 };
 
@@ -70,6 +71,7 @@ export const KIND_NOUN: Record<EventKind, string> = {
   botez: 'botezul',
   cununie: 'cununia civilă',
   aniversare: 'aniversarea',
+  copii: 'petrecerea',
   film: 'seara de film',
 };
 

@@ -39,6 +39,13 @@ export const STARTERS: Record<EventKind, Pick<Invitation, 'intro' | 'message' | 
     askKids: false,
     askMenu: false,
   },
+  copii: {
+    intro: 'Facem o petrecere cu baloane, tort și multă joacă. Ne-ar bucura tare să fiți și voi acolo!',
+    message: '',
+    moments: [m('Petrecerea', '16:00')],
+    askKids: true,
+    askMenu: false,
+  },
   film: {
     intro: 'Stingem lumina, facem popcorn și ne strângem pe canapea. Locul tău e păstrat.',
     message: '',

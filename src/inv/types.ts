@@ -1,7 +1,7 @@
-export type EventKind = 'nunta' | 'botez' | 'cununie' | 'aniversare' | 'film';
+export type EventKind = 'nunta' | 'botez' | 'cununie' | 'aniversare' | 'copii' | 'film';
 export type TemplateId = 'clasic' | 'botanic' | 'seara';
 
-export const EVENT_KINDS: EventKind[] = ['nunta', 'botez', 'cununie', 'aniversare', 'film'];
+export const EVENT_KINDS: EventKind[] = ['nunta', 'botez', 'cununie', 'aniversare', 'copii', 'film'];
 export const TEMPLATE_IDS: TemplateId[] = ['clasic', 'botanic', 'seara'];
 
 /** One stop of the day: the church, the town hall, the restaurant. */

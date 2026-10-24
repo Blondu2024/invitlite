@@ -68,6 +68,20 @@ const BALLOONS =
   p('M36 43l2-3 2 3z M62 43l2-3 2 3z') +
   p('M38 43c-3 8 3 12 0 18 M64 43c3 8-3 12 0 18');
 
+/** A striped party hat with a pompom, two streamers and two little stars. */
+const HAT =
+  p('M28 96L50 24l22 72 M28 96c12 6 32 6 44 0') +
+  p('M36 70c9 3 19 3 28 0 M42 48c5 2 11 2 16 0') +
+  c(50, 17, 6.5) +
+  p('M18 42c6 4 4 10 10 12 M82 36c-6 4-4 10-10 12') +
+  p('M15 78l2 4 4 1-4 1-2 4-2-4-4-1 4-1z M85 64l1.5 3 3 .8-3 .8-1.5 3-1.5-3-3-.8 3-.8z');
+
+/** A paper pinwheel on a stick. */
+const PINWHEEL =
+  p('M30 30V8c10 0 14 12 0 22z M30 30h22c0 10-12 14-22 0z M30 30v22c-10 0-14-12 0-22z M30 30H8c0-10 12-14 22 0z') +
+  c(30, 30, 2.5) +
+  p('M30 52v44');
+
 /** A film reel with five windows, its strip unspooling to the right. */
 const REEL =
   c(46, 46, 34) + c(46, 46, 5) +
@@ -90,6 +104,8 @@ export function mainMotif(kind: EventKind, cls = 'motif'): string {
       return svg(`${cls} m-bouquet`, '0 0 100 116', BOUQUET);
     case 'aniversare':
       return svg(`${cls} m-cake`, '0 0 100 108', CAKE);
+    case 'copii':
+      return svg(`${cls} m-hat`, '0 0 100 108', HAT);
     default:
       return svg(`${cls} m-rings`, '0 0 120 96', RINGS);
   }
@@ -105,6 +121,8 @@ export function smallMotif(kind: EventKind, cls = 'orn'): string {
       return svg(`${cls} m-rings-s`, '0 0 100 60', RINGS_SMALL);
     case 'aniversare':
       return svg(`${cls} m-balloons`, '0 0 100 64', BALLOONS);
+    case 'copii':
+      return svg(`${cls} m-pinwheel`, '0 0 60 100', PINWHEEL);
     default:
       return svg(`${cls} m-flower`, '0 0 100 58', FLOWER);
   }

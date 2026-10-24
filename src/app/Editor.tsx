@@ -17,6 +17,7 @@ const HOSTS_HINT: Record<Invitation['kind'], string> = {
   botez: 'Sofia Maria',
   cununie: 'Ana & Mihai',
   aniversare: 'Bunicul Ion, 70 de ani',
+  copii: 'Matei, 5 ani',
   film: 'Ioana și Radu',
 };
 
@@ -25,6 +26,7 @@ const HOSTS_LABEL: Record<Invitation['kind'], string> = {
   botez: 'Numele copilului',
   cununie: 'Numele mirilor',
   aniversare: 'Sărbătoritul',
+  copii: 'Sărbătoritul',
   film: 'Gazdele',
 };
 

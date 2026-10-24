@@ -6,7 +6,8 @@ import { TEMPLATE_IDS, type TemplateId } from '../inv/types';
 import { Preview } from './Preview';
 
 const SUITE: [string, string][] = [
-  ['Invitația', 'Nuntă, botez, cununie sau aniversare, în trei stiluri. Se deschide ca un plic, cu sigiliul vostru.'],
+  ['Invitația', 'Nuntă, botez, cununie, aniversare, petrecere de copii sau seară de film, în trei stiluri. Se deschide ca un plic, cu sigiliul vostru.'],
+  ['O deschidere pentru fiecare', 'La nuntă cad petale și se ating inelele. La botez trece un porumbel prin lumina vitraliului. La aniversare invitatul suflă în lumânări, la copii sparge baloane. Cu sunet, pe care îl oprești dintr-o atingere.'],
   ['Confirmarea pe WhatsApp', 'Invitatul alege câte persoane vin, câți copii, ce meniu. Ție îți vine un mesaj gata scris. Fără formulare de completat pe altă parte.'],
   ['Invitații personale', 'Scrii lista. Fiecare primește linkul lui, cu „Dragă familia Popescu" pe plic.'],
   ['Programul și harta', 'Biserica, sala, ora. Fiecare loc cu butonul lui de hartă.'],
@@ -49,7 +50,7 @@ export function Landing() {
             </span>
           </h1>
           <p className="lp-sub">
-            Nuntă, botez, cununie sau aniversare. Invitații confirmă pe WhatsApp dintr-o atingere. Fără cont, fără plată, fără server.
+            Nuntă, botez, cununie, aniversare, petrecere de copii sau seară de film. Invitații confirmă pe WhatsApp dintr-o atingere. Fără cont, fără plată, fără server.
           </p>
           <div className="lp-ctas">
             <a className="cta" href="/creeaza/">

@@ -1,6 +1,7 @@
 import { googleCalendarUrl, icsFile } from './calendar';
 import { rsvpUrl } from './rsvp';
 import { petals } from './scenes';
+import { sound, type Sound } from './sound';
 import type { Invitation } from './types';
 
 export interface WireOpts {
@@ -20,28 +21,68 @@ export function wire(doc: Document, inv: Invitation, o: WireOpts): void {
   const stage = doc.querySelector<HTMLElement>('[data-stage]');
   const canvas = doc.querySelector<HTMLCanvasElement>('canvas[data-petals]');
   const reduced = !!win?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  let hurryPetals = () => {};
+  const taps = stage ? Array.from(stage.querySelectorAll<HTMLElement>('[data-tap]')) : [];
+  let snd: Sound | null = null;
+  let hurryFx: (() => void) | null = null;
+  const timers: number[] = [];
+  const later = (fn: () => void, ms: number) => {
+    if (win) timers.push(win.setTimeout(fn, ms));
+  };
+  const buzz = (ms: number) => {
+    try {
+      win?.navigator.vibrate?.(ms);
+    } catch {
+      // vibration is a nicety; some browsers throw when it is blocked
+    }
+  };
+
   let shown = false;
   const show = () => {
     if (shown) return;
     shown = true;
-    root.classList.remove('is-playing');
+    timers.forEach((id) => win?.clearTimeout(id));
     root.classList.add('is-shown');
+    if (!hurryFx) canvas?.remove();
     if (stage) {
+      // The scene keeps its last frame while it fades, then goes.
       root.classList.add('post');
       stage.classList.add('st-out');
-      win?.setTimeout(() => stage.remove(), 900);
+      win?.setTimeout(() => {
+        stage.remove();
+        root.classList.remove('is-playing');
+      }, 900);
+    } else {
+      root.classList.remove('is-playing');
     }
   };
+
+  // Confetti and petals keep falling a little over the page after the scene ends.
+  const startFx = () => {
+    if (canvas && win && !hurryFx && !shown) hurryFx = petals(canvas, win);
+  };
+
+  let done = false;
+  const finish = () => {
+    if (done || !stage) return;
+    done = true;
+    stage.classList.add('st-done');
+    snd?.play(stage.dataset.done ?? '');
+    if (canvas?.dataset.at === 'done') startFx();
+    later(show, Number(stage.dataset.after) || 2000);
+  };
+  const tap = (el: HTMLElement) => {
+    if (el.classList.contains('off') || shown) return;
+    el.classList.add('off');
+    snd?.play(el.dataset.sfx ?? '');
+    buzz(12);
+    if (taps.every((x) => x.classList.contains('off'))) finish();
+  };
+  taps.forEach((el) => el.addEventListener('click', () => tap(el)));
 
   const open = () => {
     root.classList.remove('is-sealed');
     root.classList.add('is-open');
-    try {
-      win?.navigator.vibrate?.(35);
-    } catch {
-      // vibration is a nicety; some browsers throw when it is blocked
-    }
+    buzz(35);
     const env = doc.querySelector<HTMLElement>('[data-env]');
     if (env) win?.setTimeout(() => env.remove(), 1800);
     if (!stage || reduced || !win) {
@@ -51,19 +92,37 @@ export function wire(doc: Document, inv: Invitation, o: WireOpts): void {
       return;
     }
     root.classList.add('is-playing');
-    win.setTimeout(show, Number(stage.dataset.stage) || 4000);
-    // Petals keep falling a little over the page after the scene ends.
-    if (canvas) {
-      win.setTimeout(() => {
-        if (skipped) canvas.remove();
-        else hurryPetals = petals(canvas, win);
-      }, 1500);
+    // Audio may only start inside the guest's tap, which is where we are.
+    snd = sound(win);
+    const btn = stage.querySelector<HTMLElement>('[data-snd]');
+    if (!snd) btn?.remove();
+    else if (btn) {
+      const mark = () => {
+        const off = snd!.muted();
+        btn.setAttribute('aria-pressed', String(off));
+        btn.setAttribute('aria-label', off ? 'Pornește sunetul' : 'Fără sunet');
+      };
+      mark();
+      btn.addEventListener('click', () => {
+        snd!.toggle();
+        mark();
+      });
     }
+    for (const cue of (stage.dataset.cues ?? '').split(',').filter(Boolean)) {
+      const [name, at] = cue.split('@');
+      later(() => snd?.play(name), Number(at) || 0);
+    }
+    later(show, Number(stage.dataset.stage) || 4000);
+    // A guest who only watches gets the candles blown and the balloons popped.
+    if (taps.length && stage.dataset.auto) {
+      later(() => {
+        taps.filter((x) => !x.classList.contains('off')).forEach((x, i) => later(() => tap(x), i * 380));
+      }, Number(stage.dataset.auto));
+    }
+    if (canvas && canvas.dataset.at !== 'done') later(startFx, Number(canvas.dataset.at) || 1500);
   };
-  let skipped = false;
   const skip = () => {
-    skipped = true;
-    hurryPetals();
+    hurryFx?.();
     show();
   };
   doc.querySelector('[data-open]')?.addEventListener('click', open);
